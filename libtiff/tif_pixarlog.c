@@ -713,6 +713,11 @@ static int PixarLogGuessDataFmt(TIFFDirectory *td)
     return guess;
 }
 
+static tmsize_t multiply_ms(tmsize_t m1, tmsize_t m2)
+{
+    return _TIFFMultiplySSize(NULL, m1, m2, NULL);
+}
+
 static tmsize_t add_ms(tmsize_t m1, tmsize_t m2)
 {
     assert(m1 >= 0 && m2 >= 0);
@@ -760,12 +765,9 @@ static int PixarLogSetupDecode(TIFF *tif)
     sp->stride =
         (td->td_planarconfig == PLANARCONFIG_CONTIG ? td->td_samplesperpixel
                                                     : 1);
-    tbuf_size = _TIFFMultiplySSize(
-        NULL,
-        _TIFFMultiplySSize(
-            NULL, _TIFFMultiplySSize(NULL, sp->stride, td->td_imagewidth, NULL),
-            strip_height, NULL),
-        sizeof(uint16_t), NULL);
+    tbuf_size = multiply_ms(
+        multiply_ms(multiply_ms(sp->stride, td->td_imagewidth), strip_height),
+        sizeof(uint16_t));
     /* add one more stride in case input ends mid-stride */
     tbuf_size = add_ms(tbuf_size, sizeof(uint16_t) * sp->stride);
     if (tbuf_size == 0)
@@ -1003,12 +1005,10 @@ static int PixarLogSetupEncode(TIFF *tif)
     sp->stride =
         (td->td_planarconfig == PLANARCONFIG_CONTIG ? td->td_samplesperpixel
                                                     : 1);
-    tbuf_size = _TIFFMultiplySSize(
-        NULL,
-        _TIFFMultiplySSize(
-            NULL, _TIFFMultiplySSize(NULL, sp->stride, td->td_imagewidth, NULL),
-            td->td_rowsperstrip, NULL),
-        sizeof(uint16_t), NULL);
+    tbuf_size =
+        multiply_ms(multiply_ms(multiply_ms(sp->stride, td->td_imagewidth),
+                                td->td_rowsperstrip),
+                    sizeof(uint16_t));
     if (tbuf_size == 0)
         return (0); /* TODO: this is an error return without error report
                        through TIFFErrorExt */

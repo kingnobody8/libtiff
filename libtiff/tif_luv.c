@@ -1335,6 +1335,11 @@ static int LogL16GuessDataFmt(TIFFDirectory *td)
     return (SGILOGDATAFMT_UNKNOWN);
 }
 
+static tmsize_t multiply_ms(tmsize_t m1, tmsize_t m2)
+{
+    return _TIFFMultiplySSize(NULL, m1, m2, NULL);
+}
+
 static int LogL16InitState(TIFF *tif)
 {
     static const char module[] = "LogL16InitState";
@@ -1372,15 +1377,12 @@ static int LogL16InitState(TIFF *tif)
             return (0);
     }
     if (isTiled(tif))
-        sp->tbuflen =
-            _TIFFMultiplySSize(NULL, td->td_tilewidth, td->td_tilelength, NULL);
+        sp->tbuflen = multiply_ms(td->td_tilewidth, td->td_tilelength);
     else if (td->td_rowsperstrip < td->td_imagelength)
-        sp->tbuflen = _TIFFMultiplySSize(NULL, td->td_imagewidth,
-                                         td->td_rowsperstrip, NULL);
+        sp->tbuflen = multiply_ms(td->td_imagewidth, td->td_rowsperstrip);
     else
-        sp->tbuflen = _TIFFMultiplySSize(NULL, td->td_imagewidth,
-                                         td->td_imagelength, NULL);
-    if (_TIFFMultiplySSize(NULL, sp->tbuflen, sizeof(int16_t), NULL) == 0 ||
+        sp->tbuflen = multiply_ms(td->td_imagewidth, td->td_imagelength);
+    if (multiply_ms(sp->tbuflen, sizeof(int16_t)) == 0 ||
         (sp->tbuf = (uint8_t *)_TIFFmallocExt(
              tif, sp->tbuflen * sizeof(int16_t))) == NULL)
     {
@@ -1482,15 +1484,12 @@ static int LogLuvInitState(TIFF *tif)
             return (0);
     }
     if (isTiled(tif))
-        sp->tbuflen =
-            _TIFFMultiplySSize(NULL, td->td_tilewidth, td->td_tilelength, NULL);
+        sp->tbuflen = multiply_ms(td->td_tilewidth, td->td_tilelength);
     else if (td->td_rowsperstrip < td->td_imagelength)
-        sp->tbuflen = _TIFFMultiplySSize(NULL, td->td_imagewidth,
-                                         td->td_rowsperstrip, NULL);
+        sp->tbuflen = multiply_ms(td->td_imagewidth, td->td_rowsperstrip);
     else
-        sp->tbuflen = _TIFFMultiplySSize(NULL, td->td_imagewidth,
-                                         td->td_imagelength, NULL);
-    if (_TIFFMultiplySSize(NULL, sp->tbuflen, sizeof(uint32_t), NULL) == 0 ||
+        sp->tbuflen = multiply_ms(td->td_imagewidth, td->td_imagelength);
+    if (multiply_ms(sp->tbuflen, sizeof(uint32_t)) == 0 ||
         (sp->tbuf = (uint8_t *)_TIFFmallocExt(
              tif, sp->tbuflen * sizeof(uint32_t))) == NULL)
     {
