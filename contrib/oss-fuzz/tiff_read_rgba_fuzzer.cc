@@ -83,8 +83,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
         TIFFClose(tif);
         return 0;
     }
-    
-    if(TIFFIsTiled(tif)){
+
+    if (TIFFIsTiled(tif))
+    {
         /* another hack to work around an OOM in tif_fax3.c */
         uint32_t tilewidth = 0;
         uint32_t imagewidth = 0;
@@ -98,7 +99,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
             TIFFClose(tif);
             return 0;
         }
-    }else{
+    }
+    else
+    {
         // check the size of the non-tiled image
         uint32_t rowsize = 0;
         TIFFGetField(tif, TIFFTAG_ROWSPERSTRIP, &rowsize);
@@ -114,23 +117,25 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
     }
 
     uint32_t size = __TIFFSafeMultiply(uint32_t, w, h);
-    
+
     if (size > MAX_SIZE || size == 0)
     {
         TIFFClose(tif);
         return 0;
     }
-    
+
     raster = (uint32_t *)_TIFFmalloc(size * sizeof(uint32_t));
     if (raster != NULL)
-    {   
+    {
         TIFFReadRGBAImage(tif, w, h, raster, 0);
 
-        if(!TIFFIsTiled(tif)){
+        if (!TIFFIsTiled(tif))
+        {
             // Allocate a buffer to hold one scanline
             tsize_t scanlineSize = TIFFScanlineSize(tif);
-            void* buffer = _TIFFmalloc(scanlineSize);
-            if (!buffer) {
+            void *buffer = _TIFFmalloc(scanlineSize);
+            if (!buffer)
+            {
                 fprintf(stderr, "Memory allocation failed\n");
                 _TIFFfree(buffer);
                 TIFFClose(tif);
@@ -138,8 +143,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
             }
 
             // Read each scanline
-            for (uint32_t row = 0; row < h; row++) {
-                if (TIFFReadScanline(tif, buffer, row, 0) < 0) {
+            for (uint32_t row = 0; row < h; row++)
+            {
+                if (TIFFReadScanline(tif, buffer, row, 0) < 0)
+                {
                     _TIFFfree(buffer);
                     TIFFClose(tif);
                     return 1;
