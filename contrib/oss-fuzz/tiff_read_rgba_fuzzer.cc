@@ -129,7 +129,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
         if(!TIFFIsTiled(tif)){
             // Allocate a buffer to hold one scanline
             tsize_t scanlineSize = TIFFScanlineSize(tif);
-            void* buffer = malloc(scanlineSize);
+            void* buffer = _TIFFmalloc(scanlineSize);
             if (!buffer) {
                 fprintf(stderr, "Memory allocation failed\n");
                 _TIFFfree(buffer);
