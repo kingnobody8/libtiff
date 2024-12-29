@@ -102,7 +102,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size)
         // check the size of the non-tiled image
         uint32_t rowsize = 0;
         TIFFGetField(tif, TIFFTAG_ROWSPERSTRIP, &rowsize);
-        stripsize = TIFFStripSize(tif);
+        uint32_t stripsize = TIFFStripSize(tif);
         rowsize = __TIFFSafeMultiply(uint32_t, rowsize, 2);
         stripsize = __TIFFSafeMultiply(uint32_t, stripsize, 2);
         if (rowsize * 2 > MAX_SIZE || stripsize * 2 > MAX_SIZE ||
