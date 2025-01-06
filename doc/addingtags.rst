@@ -296,7 +296,7 @@ and then only two points need to be done:
 #. Add an entry in the :c:expr:`tiffFields[]` array list defined at the
    top of :file:`tif_dirinfo.c`.
 
-However, if it is desirable for the tag value to have it's own field in
+However, if it is desirable for the tag value to have its own field in
 the :c:struct:`TIFFDirectory` structure, then you will also need to
 ``#define`` a new :c:macro:`FIELD_` value for it, and add appropriate
 handling as follows:
