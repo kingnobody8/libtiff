@@ -276,7 +276,7 @@ order by the tag number. Sorting is done when setting up the
     | "**_C0_**" for fixed arrays and thus no count parameter is required
       for TIFFSetField() and TIFFGetField(), respectively.
       The array length is constant and given by `field_readcount` or
-     `field_writecount`, respectively.
+      `field_writecount`, respectively.
     | "**_C16_**" and "**_C32_**" are for variable arrays with ``uint16_t``
       or ``uint32_t`` count parameter required for TIFFSetField() and
       TIFFGetField(), respectively. But then, `field_readcount` and
