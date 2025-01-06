@@ -272,7 +272,7 @@ order by the tag number. Sorting is done when setting up the
       `TIFFGetField()`, respectively.
     | To distinguish the three different array types, there are three
       strings before the value type within the enummeration identifier
-     (e.g. TIFF_SETGET_C0_UINT64):
+      (e.g. TIFF_SETGET_C0_UINT64):
     | "**_C0_**" for fixed arrays and thus no count parameter is required
       for TIFFSetField() and TIFFGetField(), respectively.
       The array length is constant and given by `field_readcount` or
