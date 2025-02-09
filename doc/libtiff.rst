@@ -492,7 +492,7 @@ is assumed to be organized in strips, the following might be used:
         TIFF* tif = TIFFOpen("myfile.tif", "r");
         if (tif) {
             uint32_t imagelength;
-            void * buf;
+            void *buf;
             uint32_t row;
             
             TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &imagelength);
@@ -519,7 +519,7 @@ to handle either case one might use the following instead:
         TIFF* tif = TIFFOpen("myfile.tif", "r");
         if (tif) {
             uint32_t imagelength;
-            void * buf;
+            void *buf;
             uint32_t row;
             
             TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &imagelength);
@@ -611,7 +611,7 @@ a file:
         if (tif) {
             void *buf;
             uint32_t strip;
-            uint32_t* bc;
+            uint32_t *bc;
             uint32_t stripsize;
             
             TIFFGetField(tif, TIFFTAG_STRIPBYTECOUNTS, &bc);
@@ -666,7 +666,7 @@ code of the following sort might be used:
             uint32_t imageWidth, imageLength;
             uint32_t tileWidth, tileLength;
             uint32_t x, y;
-            void * buf;
+            void *buf;
             
             TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &imageWidth);
             TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &imageLength);
