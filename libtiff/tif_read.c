@@ -463,9 +463,10 @@ int TIFFReadScanline(TIFF *tif, void *buf, uint32_t row, uint16_t sample)
 
         if (e)
         {
-            if ((e = _TIFFCheckPostDecodeLenght(tif, tif->tif_postdecode,
-                                                tif->tif_scanlinesize,
-                                                "TIFFReadScanline")))
+            e = _TIFFCheckPostDecodeLenght(tif, tif->tif_postdecode,
+                                           tif->tif_scanlinesize,
+                                           "TIFFReadScanline");
+            if (e)
                 (*tif->tif_postdecode)(tif, (uint8_t *)buf,
                                        tif->tif_scanlinesize);
         }
@@ -1721,9 +1722,9 @@ int _TIFFCheckPostDecodeLenght(TIFF *tif, TIFFPostMethod tif_postdecode,
                                tmsize_t cc, const char *modulename)
 {
     int idx = -1;
-    char multiplenumber[] = {2, 3, 4, 8};
-    char *postdecodename[] = {"_TIFFSwab16BitData", "_TIFFSwab24BitData",
-                              "_TIFFSwab32BitData", "_TIFFSwab64BitData"};
+    const char multiplenumber[] = {2, 3, 4, 8};
+    const char *postdecodename[] = {"_TIFFSwab16BitData", "_TIFFSwab24BitData",
+                                    "_TIFFSwab32BitData", "_TIFFSwab64BitData"};
     if (tif_postdecode == _TIFFSwab16BitData && ((cc & 1) != 0))
         idx = 0;
     else if (tif_postdecode == _TIFFSwab24BitData && ((cc % 3) != 0))
@@ -1732,16 +1733,13 @@ int _TIFFCheckPostDecodeLenght(TIFF *tif, TIFFPostMethod tif_postdecode,
         idx = 2;
     else if (tif_postdecode == _TIFFSwab64BitData && ((cc & 7) != 0))
         idx = 3;
+    else
+        return 1;
 
-    if (idx >= 0)
-    {
-        TIFFWarningExtR(tif, modulename,
-                        "Number of bytes (%" TIFF_SIZE_FORMAT
-                        ") to swap with %s"
-                        " is not a multiple of %d. Result might be incorrect",
-                        cc, postdecodename[idx], multiplenumber[idx]);
-
-        return 0;
-    }
-    return 1;
+    TIFFWarningExtR(tif, modulename,
+                    "Number of bytes (%" TIFF_SIZE_FORMAT
+                    ") to swap with %s"
+                    " is not a multiple of %d. Result might be incorrect",
+                    cc, postdecodename[idx], multiplenumber[idx]);
+    return 0;
 }
