@@ -130,11 +130,11 @@ target_sources(tiffsplit PRIVATE tiffsplit.c ${MSVC_RESOURCE_FILE})
 set_target_properties(tiffsplit PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(tiffsplit PRIVATE tiff tiff_port)
 
-if(tiff_framework)
+if(tiff-framework)
   set_target_properties(fax2ps PROPERTIES 
     FRAMEWORK TRUE
     FRAMEWORK_VERSION "${LIBTIFF_VERSION_FULL}"
-    PRODUCT_BUNDLE_IDENTIFIER "gitlab.com/libtiff/fax2ps"
+    PRODUCT_BUNDLE_IDENTIFIER "gitlab.com/libtiff/libtiff"
     PUBLIC_HEADER "${tiff_public_HEADERS}"
     XCODE_ATTRIBUTE_INSTALL_PATH "@rpath"
     XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ""
@@ -170,8 +170,7 @@ install(TARGETS fax2ps
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR} 
-        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
-        COMPONENT runtime OPTIONAL)
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if(OPENGL_SUPPORT) 
   add_executable(tiffgt ../placeholder.h)

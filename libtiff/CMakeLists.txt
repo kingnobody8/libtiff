@@ -210,7 +210,7 @@ if(HAVE_LD_VERSION_SCRIPT)
   endif()
 endif()
 
-if(tiff_framework)
+if(tiff-framework)
   set(OPENGL_SUPPORT OFF) # Limited Support for OpenGL on Apple products
 
   set_target_properties(tiff PROPERTIES 
@@ -234,9 +234,7 @@ if(tiff-install)
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
           ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR} 
-          # BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
-          COMPONENT runtime OPTIONAL)
+          FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
   install(FILES ${tiff_public_HEADERS}
           DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")

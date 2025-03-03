@@ -62,7 +62,7 @@ option(tiff-docs "build TIFF documentation" ON)
 option(tiff-deprecated "build TIFF deprecated features" OFF)
 option(tiff-install "install TIFF targets" ${TIFF_INSTALL_DEFAULT})
 if(APPLE)
-  option(tiff_framework "Build as Apple Frameworks" OFF)
+  option(tiff-framework "Build as Apple Frameworks" OFF)
 endif()
 
 # Disable deprecated features to ensure clean build
