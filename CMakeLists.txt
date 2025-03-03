@@ -24,7 +24,7 @@
 # LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 # OF THIS SOFTWARE.
 
-cmake_minimum_required(VERSION 3.9.0)
+cmake_minimum_required(VERSION 3.14)
 
 # Default policy is from 3.9.0
 cmake_policy(VERSION 3.9.0)
@@ -61,6 +61,9 @@ option(tiff-contrib "build TIFF contrib" ON)
 option(tiff-docs "build TIFF documentation" ON)
 option(tiff-deprecated "build TIFF deprecated features" OFF)
 option(tiff-install "install TIFF targets" ${TIFF_INSTALL_DEFAULT})
+if(APPLE)
+  option(tiff_framework "Build as Apple Frameworks" OFF)
+endif()
 
 # Disable deprecated features to ensure clean build
 if (tiff-deprecated)
