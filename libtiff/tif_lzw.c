@@ -644,18 +644,28 @@ code_above_or_equal_to_258:
 
     assert(len >= 4);
 
+    if (codep == NULL)
+        goto error_codep;
     *--tp = codep->value;
     codep = codep->next;
+    if (codep == NULL)
+        goto error_codep;
     *--tp = codep->value;
     codep = codep->next;
+    if (codep == NULL)
+        goto error_codep;
     *--tp = codep->value;
     codep = codep->next;
+    if (codep == NULL)
+        goto error_codep;
     *--tp = codep->value;
     if (tp > op)
     {
         do
         {
             codep = codep->next;
+            if (codep == NULL)
+                goto error_codep;
             *--tp = codep->value;
         } while (tp > op);
     }
@@ -705,12 +715,14 @@ too_short_buffer:
     do
     {
         codep = codep->next;
-    } while (codep->length > occ);
+    } while (codep != NULL && codep->length > occ);
 
     sp->dec_restart = occ;
     uint8_t *tp = op + occ;
     do
     {
+        if (codep == NULL)
+            goto error_codep;
         *--tp = codep->value;
         codep = codep->next;
     } while (--occ);
@@ -751,6 +763,13 @@ error_code:
     memset(op, 0, (size_t)occ);
     sp->read_error = 1;
     TIFFErrorExtR(tif, tif->tif_name, "Using code not yet in table");
+    return 0;
+error_codep:
+    memset(op, 0, (size_t)occ);
+    TIFFErrorExtR(tif, module,
+                  "Code-pointer is NULL at scanline %" PRIu32 " (rest %" PRIu64
+                  " bytes)",
+                  tif->tif_row, (uint64_t)occ);
     return 0;
 }
 
