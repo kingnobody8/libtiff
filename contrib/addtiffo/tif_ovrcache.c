@@ -100,9 +100,9 @@ TIFFOvrCache *TIFFCreateOvrCache(TIFF *hTIFF, toff_t nDirOffset)
     /* -------------------------------------------------------------------- */
 
     psCache->pabyRow1Blocks =
-        (unsigned char *)_TIFFmalloc(psCache->nBytesPerRow);
+        (unsigned char *)_TIFFmalloc((tmsize_t)psCache->nBytesPerRow);
     psCache->pabyRow2Blocks =
-        (unsigned char *)_TIFFmalloc(psCache->nBytesPerRow);
+        (unsigned char *)_TIFFmalloc((tmsize_t)psCache->nBytesPerRow);
 
     if (psCache->pabyRow1Blocks == NULL || psCache->pabyRow2Blocks == NULL)
     {
@@ -118,8 +118,8 @@ TIFFOvrCache *TIFFCreateOvrCache(TIFF *hTIFF, toff_t nDirOffset)
         return NULL;
     }
 
-    _TIFFmemset(psCache->pabyRow1Blocks, 0, psCache->nBytesPerRow);
-    _TIFFmemset(psCache->pabyRow2Blocks, 0, psCache->nBytesPerRow);
+    _TIFFmemset(psCache->pabyRow1Blocks, 0, (tmsize_t)psCache->nBytesPerRow);
+    _TIFFmemset(psCache->pabyRow2Blocks, 0, (tmsize_t)psCache->nBytesPerRow);
 
     psCache->nBlockOffset = 0;
 
@@ -154,19 +154,19 @@ static void TIFFWriteOvrRow(TIFFOvrCache *psCache)
     if (TIFFIsByteSwapped(psCache->hTIFF))
     {
         if (psCache->nBitsPerPixel == 16)
-            TIFFSwabArrayOfShort((uint16_t *)psCache->pabyRow1Blocks,
-                                 (psCache->nBytesPerBlock * psCache->nSamples) /
-                                     2);
+            TIFFSwabArrayOfShort(
+                (uint16_t *)psCache->pabyRow1Blocks,
+                (tmsize_t)((psCache->nBytesPerBlock * psCache->nSamples) / 2));
 
         else if (psCache->nBitsPerPixel == 32)
-            TIFFSwabArrayOfLong((uint32_t *)psCache->pabyRow1Blocks,
-                                (psCache->nBytesPerBlock * psCache->nSamples) /
-                                    4);
+            TIFFSwabArrayOfLong(
+                (uint32_t *)psCache->pabyRow1Blocks,
+                (tmsize_t)((psCache->nBytesPerBlock * psCache->nSamples) / 4));
 
         else if (psCache->nBitsPerPixel == 64)
             TIFFSwabArrayOfDouble(
                 (double *)psCache->pabyRow1Blocks,
-                (psCache->nBytesPerBlock * psCache->nSamples) / 8);
+                (tmsize_t)((psCache->nBytesPerBlock * psCache->nSamples) / 8));
     }
 
     /* -------------------------------------------------------------------- */
@@ -262,7 +262,7 @@ static void TIFFWriteOvrRow(TIFFOvrCache *psCache)
     psCache->pabyRow1Blocks = psCache->pabyRow2Blocks;
     psCache->pabyRow2Blocks = pabyData;
 
-    _TIFFmemset(pabyData, 0, psCache->nBytesPerRow);
+    _TIFFmemset(pabyData, 0, (tmsize_t)psCache->nBytesPerRow);
 
     psCache->nBlockOffset++;
 
@@ -286,7 +286,7 @@ unsigned char *TIFFGetOvrBlock(TIFFOvrCache *psCache, int iTileX, int iTileY,
                                int iSample)
 
 {
-    long nRowOffset;
+    toff_t nRowOffset;
 
     if (iTileY > psCache->nBlockOffset + 1)
         TIFFWriteOvrRow(psCache);
@@ -318,7 +318,7 @@ unsigned char *TIFFGetOvrBlock_Subsampled(TIFFOvrCache *psCache, int iTileX,
                                           int iTileY)
 
 {
-    int nRowOffset;
+    toff_t nRowOffset;
 
     if (iTileY > psCache->nBlockOffset + 1)
         TIFFWriteOvrRow(psCache);
