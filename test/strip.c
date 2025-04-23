@@ -277,6 +277,8 @@ openfailure:
     return -1;
 }
 
+#if 0
+/* Apparently not used anywhere */
 int write_scanlines(TIFF *tif, const tdata_t array, const tsize_t size)
 {
     uint32_t length, row;
@@ -314,3 +316,4 @@ int write_scanlines(TIFF *tif, const tdata_t array, const tsize_t size)
 
     return 0;
 }
+#endif
