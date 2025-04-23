@@ -2694,8 +2694,7 @@ void PSColorContigPreamble(FILE *fd, uint32_t w, uint32_t h, int nc)
 void PSColorSeparatePreamble(FILE *fd, uint32_t w, uint32_t h, int nc)
 {
     int i;
-
-    PhotoshopBanner(fd, w, h, ps_bytesperrow, nc, "true %d colorimage");
+    PhotoshopBanner(fd, w, h, (int)ps_bytesperrow, nc, "true %d colorimage");
     for (i = 0; i < nc; i++)
         fprintf(fd, "/line%d %" TIFF_SSIZE_FORMAT " string def\n", i,
                 ps_bytesperrow);

@@ -444,7 +444,18 @@ int main(int argc, char **argv)
         }
         _TIFF_lseek_f(fileno(fd), 0, SEEK_SET);
 #if defined(_WIN32) && defined(USE_WIN32_FILEIO)
-        tif = TIFFFdOpen(_get_osfhandle(fileno(fd)), "temp", "r");
+        intptr_t osfh = _get_osfhandle(fileno(fd));
+        if (osfh <= INT_MAX && osfh >= INT_MIN)
+            tif = TIFFFdOpen((int)osfh, "temp", "r");
+        else
+        {
+            fprintf(stderr,
+                    "WIN32 file-io returned osfhandle out of int range.\n");
+            if (pages)
+                free(pages);
+            exit(EXIT_FAILURE);
+        }
+
 #else
         tif = TIFFFdOpen(fileno(fd), "temp", "r");
 #endif
