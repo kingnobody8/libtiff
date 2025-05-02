@@ -153,20 +153,51 @@ static void TIFFWriteOvrRow(TIFFOvrCache *psCache)
     /* -------------------------------------------------------------------- */
     if (TIFFIsByteSwapped(psCache->hTIFF))
     {
+        uint64_t n;
         if (psCache->nBitsPerPixel == 16)
-            TIFFSwabArrayOfShort(
-                (uint16_t *)psCache->pabyRow1Blocks,
-                (tmsize_t)((psCache->nBytesPerBlock * psCache->nSamples) / 2));
+        {
+            n = (psCache->nBytesPerBlock * psCache->nSamples) / 2;
+            if ((sizeof(tmsize_t) > 4 && n > INT64_MAX) ||
+                (sizeof(tmsize_t) <= 4 && n > INT32_MAX))
+            {
+                TIFFErrorExt(TIFFClientdata(psCache->hTIFF),
+                             "TIFFWriteOvrRow()",
+                             "Integer overflow of number of 'short' to swap");
+                n = 0;
+            }
+            TIFFSwabArrayOfShort((uint16_t *)psCache->pabyRow1Blocks,
+                                 (tmsize_t)n);
+        }
 
         else if (psCache->nBitsPerPixel == 32)
-            TIFFSwabArrayOfLong(
-                (uint32_t *)psCache->pabyRow1Blocks,
-                (tmsize_t)((psCache->nBytesPerBlock * psCache->nSamples) / 4));
+        {
+            n = (psCache->nBytesPerBlock * psCache->nSamples) / 4;
+            if ((sizeof(tmsize_t) > 4 && n > INT64_MAX) ||
+                (sizeof(tmsize_t) <= 4 && n > INT32_MAX))
+            {
+                TIFFErrorExt(TIFFClientdata(psCache->hTIFF),
+                             "TIFFWriteOvrRow()",
+                             "Integer overflow of number of 'long' to swap");
+                n = 0;
+            }
+            TIFFSwabArrayOfLong((uint32_t *)psCache->pabyRow1Blocks,
+                                (tmsize_t)n);
+        }
 
         else if (psCache->nBitsPerPixel == 64)
-            TIFFSwabArrayOfDouble(
-                (double *)psCache->pabyRow1Blocks,
-                (tmsize_t)((psCache->nBytesPerBlock * psCache->nSamples) / 8));
+        {
+            n = (psCache->nBytesPerBlock * psCache->nSamples) / 8;
+            if ((sizeof(tmsize_t) > 4 && n > INT64_MAX) ||
+                (sizeof(tmsize_t) <= 4 && n > INT32_MAX))
+            {
+                TIFFErrorExt(TIFFClientdata(psCache->hTIFF),
+                             "TIFFWriteOvrRow()",
+                             "Integer overflow of number of 'double' to swap");
+                n = 0;
+            }
+            TIFFSwabArrayOfDouble((double *)psCache->pabyRow1Blocks,
+                                  (tmsize_t)n);
+        }
     }
 
     /* -------------------------------------------------------------------- */
