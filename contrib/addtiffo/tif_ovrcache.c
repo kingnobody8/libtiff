@@ -157,8 +157,17 @@ static void TIFFWriteOvrRow(TIFFOvrCache *psCache)
         if (psCache->nBitsPerPixel == 16)
         {
             n = (psCache->nBytesPerBlock * psCache->nSamples) / 2;
-            if ((sizeof(tmsize_t) > 4 && n > INT64_MAX) ||
-                (sizeof(tmsize_t) <= 4 && n > INT32_MAX))
+#ifdef SIZEOF_SIZE_T
+#if SIZEOF_SIZE_T <= 4
+            if (n > INT32_MAX)
+#else
+            if (n > INT64_MAX)
+#endif
+#else
+#pragma message(                                                               \
+    "---- Error: SIZEOF_SIZE_T not defined. Generate a compile error. ----")
+            SIZEOF_SIZE_T
+#endif
             {
                 TIFFErrorExt(TIFFClientdata(psCache->hTIFF),
                              "TIFFWriteOvrRow()",
@@ -172,8 +181,17 @@ static void TIFFWriteOvrRow(TIFFOvrCache *psCache)
         else if (psCache->nBitsPerPixel == 32)
         {
             n = (psCache->nBytesPerBlock * psCache->nSamples) / 4;
-            if ((sizeof(tmsize_t) > 4 && n > INT64_MAX) ||
-                (sizeof(tmsize_t) <= 4 && n > INT32_MAX))
+#ifdef SIZEOF_SIZE_T
+#if SIZEOF_SIZE_T <= 4
+            if (n > INT32_MAX)
+#else
+            if (n > INT64_MAX)
+#endif
+#else
+#pragma message(                                                               \
+    "---- Error: SIZEOF_SIZE_T not defined. Generate a compile error. ----")
+            SIZEOF_SIZE_T
+#endif
             {
                 TIFFErrorExt(TIFFClientdata(psCache->hTIFF),
                              "TIFFWriteOvrRow()",
@@ -187,8 +205,17 @@ static void TIFFWriteOvrRow(TIFFOvrCache *psCache)
         else if (psCache->nBitsPerPixel == 64)
         {
             n = (psCache->nBytesPerBlock * psCache->nSamples) / 8;
-            if ((sizeof(tmsize_t) > 4 && n > INT64_MAX) ||
-                (sizeof(tmsize_t) <= 4 && n > INT32_MAX))
+#ifdef SIZEOF_SIZE_T
+#if SIZEOF_SIZE_T <= 4
+            if (n > INT32_MAX)
+#else
+            if (n > INT64_MAX)
+#endif
+#else
+#pragma message(                                                               \
+    "---- Error: SIZEOF_SIZE_T not defined. Generate a compile error. ----")
+            SIZEOF_SIZE_T
+#endif
             {
                 TIFFErrorExt(TIFFClientdata(psCache->hTIFF),
                              "TIFFWriteOvrRow()",
