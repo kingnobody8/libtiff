@@ -920,7 +920,7 @@ static void quant_fsdither(TIFF *in, TIFF *out)
     for (i = 0; i < imagelength; ++i)
     {
         SWAP(short *, thisline, nextline);
-        lastline = (i >= imax);
+        lastline = (i == imax);
         if (i <= imax)
             GetInputLine(in, i, break);
         thisptr = thisline;
