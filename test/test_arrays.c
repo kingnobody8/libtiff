@@ -215,6 +215,7 @@ const unsigned char byte_array3[YSIZE * XSIZE] = {
 const size_t byte_array3_size = sizeof(byte_array3);
 
 #ifdef _MSC_VER
+/* suppress warning about shortening of "double" to "const float" */
 #pragma warning(disable : 4305)
 #endif
 
