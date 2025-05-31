@@ -1096,16 +1096,23 @@ static int tiffcp(TIFF *in, TIFF *out)
             TIFFSetField(out, TIFFTAG_NUMBEROFINKS, ninks);
             if (TIFFGetField(in, TIFFTAG_INKNAMES, &inknames))
             {
-                int inknameslen = (int)strlen(inknames) + 1;
+                size_t inknameslen = strlen(inknames) + 1;
                 const char *cp = inknames;
                 while (ninks > 1)
                 {
                     cp = strchr(cp, '\0');
                     cp++;
-                    inknameslen += (int)(strlen(cp) + 1);
+                    inknameslen += (strlen(cp) + 1);
                     ninks--;
                 }
-                TIFFSetField(out, TIFFTAG_INKNAMES, inknameslen, inknames);
+                if (inknameslen <= INT_MAX)
+                    TIFFSetField(out, TIFFTAG_INKNAMES, (int)inknameslen,
+                                 inknames);
+                else
+                    TIFFError(TIFFFileName(in),
+                              "Error, length of inknames= %" PRIu64
+                              " exceeds size of int ",
+                              (uint64_t)inknameslen);
             }
         }
     }
@@ -1717,7 +1724,7 @@ static uint32_t _TIFFCastSSizeToUInt32(tmsize_t val, const char *module)
     /* sizeof(tmsize_t) is determined by SIZEOF_SIZE_T */
 #ifdef SIZEOF_SIZE_T
 #if SIZEOF_SIZE_T > 4
-    if ((int64_t)val > (int64_t)UINT32_MAX)
+    if (val > UINT32_MAX)
     {
         TIFFError(module, "Integer overflow");
         return 0;

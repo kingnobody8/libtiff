@@ -491,9 +491,8 @@ static uint64_t ReadDirectory(int fd, unsigned int ix, uint64_t off)
                     _TIFFfree(datamem);
                     datamem = NULL;
                 }
-                else if (read(fd, datamem,
-                              (unsigned int)((size_t)datasize) !=
-                                  (tmsize_t)datasize))
+                else if (read(fd, datamem, (unsigned int)datasize) !=
+                         (tmsize_t)datasize)
                 {
                     Error("Read error accessing tag %u value", tag);
                     _TIFFfree(datamem);

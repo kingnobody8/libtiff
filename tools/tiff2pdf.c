@@ -292,7 +292,7 @@ static uint32_t _TIFFCastSSizeToUInt32(tmsize_t val, const char *module)
     /* sizeof(tmsize_t) is determined by SIZEOF_SIZE_T */
 #ifdef SIZEOF_SIZE_T
 #if SIZEOF_SIZE_T > 4
-    if ((int64_t)val > (int64_t)UINT32_MAX)
+    if (val > UINT32_MAX)
     {
         TIFFError(module, "Integer overflow");
         return 0;
@@ -3252,7 +3252,7 @@ tsize_t t2p_readwrite_pdf_image_tile(T2P *t2p, TIFF *input, TIFF *output,
 #ifdef JPEG_SUPPORT
     unsigned char *jpt;
     float *xfloatp;
-    uint64_t xuint32 = 0;
+    tmsize_t xint = 0;
 #endif
     const char mod[] = "t2p_readwrite_pdf_image_tile()";
     tsize_t tsdummy = 0;
@@ -3436,7 +3436,7 @@ tsize_t t2p_readwrite_pdf_image_tile(T2P *t2p, TIFF *input, TIFF *output,
                     /* Store last 2 bytes of the JpegTables */
                     table_end[0] = buffer[bufferoffset - 2];
                     table_end[1] = buffer[bufferoffset - 1];
-                    xuint32 = bufferoffset;
+                    xint = bufferoffset;
                     bufferoffset -= 2;
                     retTIFFReadRawTile = TIFFReadRawTile(
                         input, tile,
@@ -3451,8 +3451,8 @@ tsize_t t2p_readwrite_pdf_image_tile(T2P *t2p, TIFF *input, TIFF *output,
                     bufferoffset += retTIFFReadRawTile;
                     /* Overwrite SOI marker of image scan with previously */
                     /* saved end of JpegTables */
-                    buffer[xuint32 - 2] = table_end[0];
-                    buffer[xuint32 - 1] = table_end[1];
+                    buffer[xint - 2] = table_end[0];
+                    buffer[xint - 1] = table_end[1];
                 }
             }
             add_t2pWriteFile_check(output, (tdata_t)buffer, bufferoffset, mod,
