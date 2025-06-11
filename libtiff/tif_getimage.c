@@ -605,7 +605,7 @@ int TIFFRGBAImageGet(TIFFRGBAImage *img, uint32_t *raster, uint32_t w,
     {
         /* Adapt parameters to read only available lines and put image at
          * the bottom of the raster. */
-        raster = raster + (h - img->height) * w;
+        raster += (size_t)(h - img->height) * w;
         h = img->height;
     }
     if (w > img->width)
