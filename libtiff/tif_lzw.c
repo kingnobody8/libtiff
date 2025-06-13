@@ -25,6 +25,15 @@
 
 #include "tiffiop.h"
 #ifdef LZW_SUPPORT
+
+static uint8_t* allocate_lzw_state(TIFF *tif) {
+    uint8_t *data = (uint8_t *)_TIFFmallocExt(tif, sizeof(LZWCodecState));
+    if (data == NULL) {
+        TIFFErrorExt(tif->tif_clientdata, "TIFFInitLZW", "Failed to allocate LZW state");
+    }
+    return data;
+}
+
 /*
  * TIFF Library.
  * Rev 5.0 Lempel-Ziv & Welch Compression Support
@@ -1405,7 +1414,7 @@ int TIFFInitLZW(TIFF *tif, int scheme)
     /*
      * Allocate state block so tag methods have storage to record values.
      */
-    tif->tif_data = (uint8_t *)_TIFFmallocExt(tif, sizeof(LZWCodecState));
+    tif->tif_data = allocate_lzw_state(tif);
     if (tif->tif_data == NULL)
         goto bad;
     LZWDecoderState(tif)->dec_codetab = NULL;
