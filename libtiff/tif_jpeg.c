@@ -2437,6 +2437,11 @@ static int JPEGEncodeRaw(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
             {
                 inptr = ((TIFF_JSAMPLE *)buf) + clumpoffset;
                 outptr = sp->ds_buffer[ci][sp->scancount * vsamp + ypos];
+                if (outptr == NULL)
+                {
+                    TIFFErrorExtR(tif, tif->tif_name, "JPEGEncodeRaw: Null output buffer");
+                    return (0);
+                }
                 if (hsamp == 1)
                 {
                     /* fast path for at least Cb and Cr */
