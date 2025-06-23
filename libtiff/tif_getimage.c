@@ -604,7 +604,7 @@ int TIFFRGBAImageGet(TIFFRGBAImage *img, uint32_t *raster, uint32_t w,
      * Width is checked in img->get() function individually. */
     if (0 <= img->row_offset && (uint32_t)img->row_offset < img->height)
     {
-        uint32_t hx = (img->height - img->row_offset);
+        uint32_t hx = img->height - img->row_offset;
         if (h > hx)
         {
             /* Adapt parameters to read only available lines and put image
@@ -619,7 +619,7 @@ int TIFFRGBAImageGet(TIFFRGBAImage *img, uint32_t *raster, uint32_t w,
                       "Error in TIFFRGBAImageGet: row offset %d exceeds "
                       "image height %d",
                       img->row_offset, img->height);
-        return (0);
+        return 0;
     }
     return (*img->get)(img, raster, w, h);
 }
