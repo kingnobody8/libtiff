@@ -627,7 +627,7 @@ static void setrow(uint8_t *row, uint32_t nrows, const uint8_t *rows[])
         else
         {
             fprintf(stderr, "acc=%d, area=%d\n", acc, area);
-            row++;
+            *row++ = cmap[0];
         }
     }
 }
