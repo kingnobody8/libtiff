@@ -1,10 +1,29 @@
 image: registry.gitlab.com/libtiff/libtiff-ci-ubuntu24.04:latest
+include:
+  - component: gitlab.com/components/sast/sast@add-clangsa
+    inputs:
+      stage: static-analysis
 
 stages:
   - build
   - static-analysis
   - pages
 
+
+.cdb_cache:
+  # see https://docs.gitlab.com/ci/yaml/#cache
+  cache: &cdb_cache
+    key:
+      files:
+        - Makefile.am
+        - libtiff/
+    paths:
+      - compile_commands.json
+
+clangsa-sast:
+  cache:
+    <<: *cdb_cache
+    policy: pull
 
 autoconf-current:
   stage: build
@@ -16,6 +35,9 @@ autoconf-current:
     name: distribution
     paths:
     - distribution
+  cache:
+    <<: *cdb_cache
+    policy: pull-push
 
 autoconf-old:
   stage: build
