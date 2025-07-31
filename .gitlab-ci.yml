@@ -46,15 +46,6 @@ cmake-makefiles-old:
   script:
     - sh build/gitlab-ci cmake "Unix Makefiles" Release
 
-coverity:
-  stage: static-analysis
-  image: registry.gitlab.com/libtiff/libtiff-ci-ubuntu24.04-coverity:latest
-  script:
-    - sh build/gitlab-ci coverity "Ninja" Debug
-  only:
-    refs:
-      - master
-
 pages:
   stage: pages
   script:
