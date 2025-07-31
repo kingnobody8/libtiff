@@ -3,6 +3,7 @@ include:
   - component: gitlab.com/components/sast/sast@add-clangsa
     inputs:
       stage: static-analysis
+      enable_mr_pipelines: false
 
 stages:
   - build
