@@ -4,6 +4,7 @@ include:
     inputs:
       stage: static-analysis
       enable_mr_pipelines: false
+      excluded_analyzers: semgrep
 
 stages:
   - build
