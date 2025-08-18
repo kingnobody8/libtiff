@@ -1045,7 +1045,32 @@ static int tiffcp(TIFF *in, TIFF *out)
                     }
                 }
             }
-            /*fallthrough*/
+            if (preset != -1)
+            {
+                if (compression == COMPRESSION_ADOBE_DEFLATE ||
+                    compression == COMPRESSION_DEFLATE)
+                {
+                    if (TIFFSetField(out, TIFFTAG_ZIPQUALITY, preset) != 1)
+                    {
+                        return FALSE;
+                    }
+                }
+                if (compression == COMPRESSION_LZMA)
+                {
+                    if (TIFFSetField(out, TIFFTAG_LZMAPRESET, preset) != 1)
+                    {
+                        return FALSE;
+                    }
+                }
+                if (compression == COMPRESSION_ZSTD)
+                {
+                    if (TIFFSetField(out, TIFFTAG_ZSTD_LEVEL, preset) != 1)
+                    {
+                        return FALSE;
+                    }
+                }
+            }
+            break;
         case COMPRESSION_WEBP:
             if (preset != -1)
             {
