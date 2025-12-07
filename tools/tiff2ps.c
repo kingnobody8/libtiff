@@ -1660,9 +1660,9 @@ int psStart(FILE *fd, int npages, int auto_rotate, int *rotation, double *scale,
     if (!npages)
     {
         double pw = (page_width ? page_width : view_width);
-        char *pwStr = (page_width ? "page_width" : "view_width");
+        const char *pwStr = (page_width ? "page_width" : "view_width");
         double ph = (page_height ? page_height : view_height);
-        char *phStr = (page_height ? "page_height" : "view_height");
+        const char *phStr = (page_height ? "page_height" : "view_height");
         /* Check for resonable range of double parameters representing
          * integer values, before casting to int32_t within PSHead().
          * On error return(-1). */
