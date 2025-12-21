@@ -182,12 +182,14 @@ int main(int argc, char *argv[])
     {
         fprintf(stderr, "%s: Image must have at least 8-bits/sample\n",
                 argv[optind]);
+        (void)TIFFClose(in);
         return (EXIT_FAILURE);
     }
     if (!TIFFGetField(in, TIFFTAG_PHOTOMETRIC, &photometric) ||
         photometric != PHOTOMETRIC_RGB || samplesperpixel < 3)
     {
         fprintf(stderr, "%s: Image must have RGB data\n", argv[optind]);
+        (void)TIFFClose(in);
         return (EXIT_FAILURE);
     }
     TIFFGetField(in, TIFFTAG_PLANARCONFIG, &config);
@@ -195,6 +197,7 @@ int main(int argc, char *argv[])
     {
         fprintf(stderr, "%s: Can only handle contiguous data packing\n",
                 argv[optind]);
+        (void)TIFFClose(in);
         return (EXIT_FAILURE);
     }
 
@@ -245,9 +248,9 @@ int main(int argc, char *argv[])
      */
     for (i = 0, ptr = usedboxes; ptr != NULL; ++i, ptr = ptr->next)
     {
-        rm[i] = ((ptr->rmin + ptr->rmax) << COLOR_SHIFT) / 2;
-        gm[i] = ((ptr->gmin + ptr->gmax) << COLOR_SHIFT) / 2;
-        bm[i] = ((ptr->bmin + ptr->bmax) << COLOR_SHIFT) / 2;
+        rm[i] = (uint16_t)(((ptr->rmin + ptr->rmax) << COLOR_SHIFT) / 2);
+        gm[i] = (uint16_t)(((ptr->gmin + ptr->gmax) << COLOR_SHIFT) / 2);
+        bm[i] = (uint16_t)(((ptr->bmin + ptr->bmax) << COLOR_SHIFT) / 2);
     }
 
     /* We're done with the boxes now */
@@ -272,6 +275,7 @@ int main(int argc, char *argv[])
     if (out == NULL)
     {
         _TIFFfree(ColorCells);
+        (void)TIFFClose(in);
         return (EXIT_FAILURE);
     }
 
@@ -323,6 +327,7 @@ int main(int argc, char *argv[])
     }
     TIFFSetField(out, TIFFTAG_COLORMAP, rm, gm, bm);
     (void)TIFFClose(out);
+    (void)TIFFClose(in);
     _TIFFfree(ColorCells);
     return (EXIT_SUCCESS);
 }
@@ -337,14 +342,14 @@ static int processCompressOptions(char *opt)
     {
         char *cp = strchr(opt, ':');
         if (cp)
-            predictor = atoi(cp + 1);
+            predictor = (uint16_t)atoi(cp + 1);
         compression = COMPRESSION_LZW;
     }
     else if (strneq(opt, "zip", 3))
     {
         char *cp = strchr(opt, ':');
         if (cp)
-            predictor = atoi(cp + 1);
+            predictor = (uint16_t)atoi(cp + 1);
         compression = COMPRESSION_ADOBE_DEFLATE;
     }
     else
@@ -382,21 +387,21 @@ static const char usage_info[] =
 
 static void usage(int code)
 {
-    FILE *out = (code == EXIT_SUCCESS) ? stdout : stderr;
+    FILE *local_out = (code == EXIT_SUCCESS) ? stdout : stderr;
 
-    fprintf(out, "%s\n\n", TIFFGetVersion());
-    fprintf(out, "%s", usage_info);
+    fprintf(local_out, "%s\n\n", TIFFGetVersion());
+    fprintf(local_out, "%s", usage_info);
     exit(code);
 }
 
-static void get_histogram(TIFF *in, Colorbox *box)
+static void get_histogram(TIFF *local_in, Colorbox *box)
 {
-    register unsigned char *inptr;
-    register int red, green, blue;
-    register uint32_t j, i;
+    unsigned char *inptr;
+    int red, green, blue;
+    uint32_t j, i;
     unsigned char *inputline;
 
-    inputline = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(in));
+    inputline = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(local_in));
     if (inputline == NULL)
     {
         fprintf(stderr, "No space for scanline buffer\n");
@@ -407,14 +412,17 @@ static void get_histogram(TIFF *in, Colorbox *box)
     box->total = imagewidth * imagelength;
 
     {
-        register uint32_t *ptr = &histogram[0][0][0];
+        uint32_t *ptr = &histogram[0][0][0];
         for (i = B_LEN * B_LEN * B_LEN; i-- > 0;)
             *ptr++ = 0;
     }
     for (i = 0; i < imagelength; i++)
     {
-        if (TIFFReadScanline(in, inputline, i, 0) <= 0)
-            break;
+        if (TIFFReadScanline(local_in, inputline, i, 0) <= 0)
+        {
+            fprintf(stderr, "Error reading scanline\n");
+            exit(EXIT_FAILURE);
+        }
         inptr = inputline;
         for (j = imagewidth; j-- > 0;)
         {
@@ -447,8 +455,8 @@ static void get_histogram(TIFF *in, Colorbox *box)
 
 static Colorbox *largest_box(void)
 {
-    register Colorbox *p, *b;
-    register uint32_t size;
+    Colorbox *p, *b;
+    uint32_t size;
 
     b = NULL;
     size = 0;
@@ -463,11 +471,11 @@ static void splitbox(Colorbox *ptr)
 {
     uint32_t hist2[B_LEN];
     int first = 0, last = 0;
-    register Colorbox *new;
-    register uint32_t *iptr, *histp;
-    register int i, j;
-    register int ir, ig, ib;
-    register uint32_t sum, sum1, sum2;
+    Colorbox *new_box;
+    uint32_t *iptr, *histp;
+    int i, j;
+    int ir, ig, ib;
+    uint32_t sum, sum1, sum2;
     enum
     {
         RED,
@@ -552,52 +560,52 @@ static void splitbox(Colorbox *ptr)
         i++;
 
     /* Create new box, re-allocate points */
-    new = freeboxes;
-    freeboxes = new->next;
+    new_box = freeboxes;
+    freeboxes = new_box->next;
     if (freeboxes)
         freeboxes->prev = NULL;
     if (usedboxes)
-        usedboxes->prev = new;
-    new->next = usedboxes;
-    usedboxes = new;
+        usedboxes->prev = new_box;
+    new_box->next = usedboxes;
+    usedboxes = new_box;
 
     histp = &hist2[first];
     for (sum1 = 0, j = first; j < i; j++)
         sum1 += *histp++;
     for (sum2 = 0, j = i; j <= last; j++)
         sum2 += *histp++;
-    new->total = sum1;
+    new_box->total = sum1;
     ptr->total = sum2;
 
-    new->rmin = ptr->rmin;
-    new->rmax = ptr->rmax;
-    new->gmin = ptr->gmin;
-    new->gmax = ptr->gmax;
-    new->bmin = ptr->bmin;
-    new->bmax = ptr->bmax;
+    new_box->rmin = ptr->rmin;
+    new_box->rmax = ptr->rmax;
+    new_box->gmin = ptr->gmin;
+    new_box->gmax = ptr->gmax;
+    new_box->bmin = ptr->bmin;
+    new_box->bmax = ptr->bmax;
     switch (axis)
     {
         case RED:
-            new->rmax = i - 1;
+            new_box->rmax = i - 1;
             ptr->rmin = i;
             break;
         case GREEN:
-            new->gmax = i - 1;
+            new_box->gmax = i - 1;
             ptr->gmin = i;
             break;
         case BLUE:
-            new->bmax = i - 1;
+            new_box->bmax = i - 1;
             ptr->bmin = i;
             break;
     }
-    shrinkbox(new);
+    shrinkbox(new_box);
     shrinkbox(ptr);
 }
 
 static void shrinkbox(Colorbox *box)
 {
-    register uint32_t *histp;
-    register int ir, ig, ib;
+    uint32_t *histp;
+    int ir, ig, ib;
 
     if (box->rmax > box->rmin)
     {
@@ -696,10 +704,10 @@ have_bmax:;
 
 static C_cell *create_colorcell(int red, int green, int blue)
 {
-    register int ir, ig, ib, i;
-    register C_cell *ptr;
+    int ir, ig, ib, i;
+    C_cell *ptr;
     int mindist, next_n;
-    register int tmp, dist, n;
+    int tmp, dist, n;
 
     ir = red >> (COLOR_DEPTH - C_DEPTH);
     ig = green >> (COLOR_DEPTH - C_DEPTH);
@@ -788,9 +796,9 @@ static C_cell *create_colorcell(int red, int green, int blue)
 
 static void map_colortable(void)
 {
-    register uint32_t *histp = &histogram[0][0][0];
-    register C_cell *cell = NULL;
-    register int j, tmp, d2, dist;
+    uint32_t *histp = &histogram[0][0][0];
+    C_cell *cell = NULL;
+    int j, tmp, d2, dist;
     int ir, ig, ib, i;
 
     for (ir = 0; ir < B_LEN; ++ir)
@@ -799,7 +807,7 @@ static void map_colortable(void)
             {
                 if (*histp == 0)
                 {
-                    *histp = -1;
+                    *histp = (uint32_t)-1;
                     continue;
                 }
                 cell = *(ColorCells +
@@ -836,18 +844,18 @@ static void map_colortable(void)
  * closest to it.  Color values are rounded to the nearest color
  * table entry.
  */
-static void quant(TIFF *in, TIFF *out)
+static void quant(TIFF *local_in, TIFF *local_out)
 {
     unsigned char *outline, *inputline;
-    register unsigned char *outptr, *inptr;
-    register uint32_t i, j;
-    register int red, green, blue;
+    unsigned char *outptr, *inptr;
+    uint32_t i, j;
+    int red, green, blue;
 
-    inputline = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(in));
+    inputline = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(local_in));
     outline = (unsigned char *)_TIFFmalloc(imagewidth);
     for (i = 0; i < imagelength; i++)
     {
-        if (TIFFReadScanline(in, inputline, i, 0) <= 0)
+        if (TIFFReadScanline(local_in, inputline, i, 0) <= 0)
             break;
         inptr = inputline;
         outptr = outline;
@@ -858,7 +866,7 @@ static void quant(TIFF *in, TIFF *out)
             blue = *inptr++ >> COLOR_SHIFT;
             *outptr++ = (unsigned char)histogram[red][green][blue];
         }
-        if (TIFFWriteScanline(out, outline, i, 0) < 0)
+        if (TIFFWriteScanline(local_out, outline, i, 0) < 0)
             break;
     }
     _TIFFfree(inputline);
@@ -899,37 +907,37 @@ static void quant(TIFF *in, TIFF *out)
         cshift >>= COLOR_SHIFT;                                                \
     } while (0);
 
-static void quant_fsdither(TIFF *in, TIFF *out)
+static void quant_fsdither(TIFF *local_in, TIFF *local_out)
 {
     unsigned char *outline, *inputline, *inptr;
     short *thisline, *nextline;
-    register unsigned char *outptr;
-    register short *thisptr, *nextptr;
-    register uint32_t i, j;
+    unsigned char *outptr;
+    short *thisptr, *nextptr;
+    uint32_t i, j;
     uint32_t imax, jmax;
     int lastline, lastpixel;
 
     imax = imagelength - 1;
     jmax = imagewidth - 1;
-    inputline = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(in));
+    inputline = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(local_in));
     thisline = (short *)_TIFFmalloc(imagewidth * 3 * sizeof(short));
     nextline = (short *)_TIFFmalloc(imagewidth * 3 * sizeof(short));
-    outline = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(out));
+    outline = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(local_out));
 
-    GetInputLine(in, 0, goto bad); /* get first line */
-    for (i = 1; i <= imagelength; ++i)
+    GetInputLine(local_in, 0, goto bad); /* get first line */
+    for (i = 0; i < imagelength; ++i)
     {
         SWAP(short *, thisline, nextline);
-        lastline = (i >= imax);
+        lastline = (i == imax);
         if (i <= imax)
-            GetInputLine(in, i, break);
+            GetInputLine(local_in, i, break);
         thisptr = thisline;
         nextptr = nextline;
         outptr = outline;
         for (j = 0; j < imagewidth; ++j)
         {
             int red, green, blue;
-            register int oval, r2, g2, b2;
+            int oval, r2, g2, b2;
 
             lastpixel = (j == jmax);
             GetComponent(*thisptr++, r2, red);
@@ -939,8 +947,8 @@ static void quant_fsdither(TIFF *in, TIFF *out)
             if (oval == -1)
             {
                 int ci;
-                register int cj, tmp, d2, dist;
-                register C_cell *cell;
+                int cj, tmp, d2, dist;
+                C_cell *cell;
 
                 cell = *(ColorCells +
                          (((r2 >> (B_DEPTH - C_DEPTH)) << C_DEPTH * 2) +
@@ -967,37 +975,37 @@ static void quant_fsdither(TIFF *in, TIFF *out)
                 }
                 histogram[r2][g2][b2] = oval;
             }
-            *outptr++ = oval;
+            *outptr++ = (unsigned char)oval;
             red -= rm[oval];
             green -= gm[oval];
             blue -= bm[oval];
             if (!lastpixel)
             {
-                thisptr[0] += blue * 7 / 16;
-                thisptr[1] += green * 7 / 16;
-                thisptr[2] += red * 7 / 16;
+                thisptr[0] += (short)(blue * 7 / 16);
+                thisptr[1] += (short)(green * 7 / 16);
+                thisptr[2] += (short)(red * 7 / 16);
             }
             if (!lastline)
             {
                 if (j != 0)
                 {
-                    nextptr[-3] += blue * 3 / 16;
-                    nextptr[-2] += green * 3 / 16;
-                    nextptr[-1] += red * 3 / 16;
+                    nextptr[-3] += (short)(blue * 3 / 16);
+                    nextptr[-2] += (short)(green * 3 / 16);
+                    nextptr[-1] += (short)(red * 3 / 16);
                 }
-                nextptr[0] += blue * 5 / 16;
-                nextptr[1] += green * 5 / 16;
-                nextptr[2] += red * 5 / 16;
+                nextptr[0] += (short)(blue * 5 / 16);
+                nextptr[1] += (short)(green * 5 / 16);
+                nextptr[2] += (short)(red * 5 / 16);
                 if (!lastpixel)
                 {
-                    nextptr[3] += blue / 16;
-                    nextptr[4] += green / 16;
-                    nextptr[5] += red / 16;
+                    nextptr[3] += (short)(blue / 16);
+                    nextptr[4] += (short)(green / 16);
+                    nextptr[5] += (short)(red / 16);
                 }
                 nextptr += 3;
             }
         }
-        if (TIFFWriteScanline(out, outline, i - 1, 0) < 0)
+        if (TIFFWriteScanline(local_out, outline, i, 0) < 0)
             break;
     }
 bad:

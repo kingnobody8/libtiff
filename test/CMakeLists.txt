@@ -231,6 +231,18 @@ target_link_libraries(test_ifd_loop_detection PRIVATE tiff tiff_port)
 target_compile_definitions(test_ifd_loop_detection PRIVATE SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
 list(APPEND simple_tests test_ifd_loop_detection)
 
+add_executable(test_RGBAImage ../placeholder.h)
+target_sources(test_RGBAImage PRIVATE test_RGBAImage.c)
+set_target_properties(test_RGBAImage PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(test_RGBAImage PRIVATE tiff tiff_port)
+target_compile_definitions(test_RGBAImage PRIVATE SOURCE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")
+list(APPEND simple_tests test_RGBAImage)
+
+# Apply C++ compatibility mode to all test targets if enabled
+foreach(target ${simple_tests})
+  tiff_target_compile_as_cxx(${target})
+endforeach()
+
 if(WEBP_SUPPORT AND EMSCRIPTEN)
   # Emscripten is pretty finnicky about linker flags.
   # It needs --shared-memory if and only if atomics or bulk-memory is used.
@@ -461,6 +473,11 @@ if(tiff-tools)
   add_convert_test(tiffcp   noner1     "-c none -r 1"  "images/lzw-single-strip.tiff" FALSE)
   add_convert_test(tiffcp   float64_lzw_2_le "-c lzw:2"       "images/test_float64_predictor2_le_lzw.tif" FALSE)
   add_convert_test(tiffcp   float64_lzw_2_be "-c lzw:2"       "images/test_float64_predictor2_be_lzw.tif" FALSE)
+
+  # Test for Group 3 fax 1d without EOL
+  add_convert_test(tiffcp   testfax3_bug54_1dnoEOL "-c none"  "images/testfax3_bug54_1dnoEOL.tif" TRUE)
+  
+
   if(WEBP_SUPPORT)
     add_convert_test(tiffcp   webp_lossless_rgba_alpha_fully_opaque "-c none"    "images/webp_lossless_rgba_alpha_fully_opaque.tif" FALSE)
   endif()

@@ -97,13 +97,13 @@ int main(int argc, char *argv[])
                     usage(EXIT_FAILURE);
                 break;
             case 'h':
-                horizSubSampling = atoi(optarg);
+                horizSubSampling = (uint16_t)atoi(optarg);
                 if (horizSubSampling != 1 && horizSubSampling != 2 &&
                     horizSubSampling != 4)
                     usage(EXIT_FAILURE);
                 break;
             case 'v':
-                vertSubSampling = atoi(optarg);
+                vertSubSampling = (uint16_t)atoi(optarg);
                 if (vertSubSampling != 1 && vertSubSampling != 2 &&
                     vertSubSampling != 4)
                     usage(EXIT_FAILURE);
@@ -201,19 +201,19 @@ static void cvtClump(unsigned char *op, uint32_t *raster, uint32_t ch,
             Cb += (TIFFGetB(RGB) - Y) * D1;
             Cr += (TIFFGetR(RGB) - Y) * D2;
             /* emit luminence */
-            *op++ = V2Code(Y, refBlackWhite[0], refBlackWhite[1], 255);
+            *op++ = (unsigned char)V2Code(Y, refBlackWhite[0], refBlackWhite[1], 255);
         }
         for (; j < horizSubSampling; j++)
-            *op++ = Yzero;
+            *op++ = (unsigned char)Yzero;
     }
     for (; k < vertSubSampling; k++)
     {
         for (j = 0; j < horizSubSampling; j++)
-            *op++ = Yzero;
+            *op++ = (unsigned char)Yzero;
     }
     /* emit sampled chrominance values */
-    *op++ = V2Code(Cb / (ch * cw), refBlackWhite[2], refBlackWhite[3], 127);
-    *op++ = V2Code(Cr / (ch * cw), refBlackWhite[4], refBlackWhite[5], 127);
+    *op++ = (unsigned char)V2Code(Cb / (ch * cw), refBlackWhite[2], refBlackWhite[3], 127);
+    *op++ = (unsigned char)V2Code(Cr / (ch * cw), refBlackWhite[4], refBlackWhite[5], 127);
 }
 #undef LumaRed
 #undef LumaGreen
@@ -310,7 +310,7 @@ static int tiffcvt(TIFF *in, TIFF *out)
     pixel_count = width * height;
 
     /* XXX: Check the integer overflow. */
-    if (!width || !height || pixel_count / width != height)
+    if (!width || !height || SIZE_MAX / width < height)
     {
         TIFFError(TIFFFileName(in),
                   "Malformed input file; "
@@ -354,7 +354,7 @@ static int tiffcvt(TIFF *in, TIFF *out)
     TIFFSetField(out, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
     {
         char buf[2048];
-        char *cp = strrchr(TIFFFileName(in), '/');
+        const char *cp = strrchr(TIFFFileName(in), '/');
         snprintf(buf, sizeof(buf), "YCbCr conversion of %s",
                  cp ? cp + 1 : TIFFFileName(in));
         TIFFSetField(out, TIFFTAG_IMAGEDESCRIPTION, buf);

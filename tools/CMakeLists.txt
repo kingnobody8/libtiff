@@ -53,7 +53,7 @@ target_link_libraries(ppm2tiff PRIVATE tiff tiff_port)
 add_executable(raw2tiff ../placeholder.h)
 target_sources(raw2tiff PRIVATE raw2tiff.c ${MSVC_RESOURCE_FILE})
 set_target_properties(raw2tiff PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(raw2tiff PRIVATE tiff tiff_port CMath::CMath)
+target_link_libraries(raw2tiff PRIVATE tiff tiff_port ${CMath_LIBRARIES})
 
 add_executable(rgb2ycbcr ../placeholder.h)
 target_sources(rgb2ycbcr PRIVATE rgb2ycbcr.c ${MSVC_RESOURCE_FILE})
@@ -63,7 +63,7 @@ target_link_libraries(rgb2ycbcr PRIVATE tiff tiff_port)
 add_executable(thumbnail ../placeholder.h)
 target_sources(thumbnail PRIVATE thumbnail.c ${MSVC_RESOURCE_FILE})
 set_target_properties(thumbnail PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(thumbnail PRIVATE tiff tiff_port CMath::CMath)
+target_link_libraries(thumbnail PRIVATE tiff tiff_port ${CMath_LIBRARIES})
 
 add_executable(tiff2bw ../placeholder.h)
 target_sources(tiff2bw PRIVATE tiff2bw.c ${MSVC_RESOURCE_FILE})
@@ -78,7 +78,7 @@ target_link_libraries(tiff2pdf PRIVATE tiff tiff_port)
 add_executable(tiff2ps ../placeholder.h)
 target_sources(tiff2ps PRIVATE tiff2ps.c ${MSVC_RESOURCE_FILE})
 set_target_properties(tiff2ps PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(tiff2ps PRIVATE tiff tiff_port CMath::CMath)
+target_link_libraries(tiff2ps PRIVATE tiff tiff_port ${CMath_LIBRARIES})
 
 add_executable(tiff2rgba ../placeholder.h)
 target_sources(tiff2rgba PRIVATE tiff2rgba.c ${MSVC_RESOURCE_FILE})
@@ -98,7 +98,7 @@ target_link_libraries(tiffcp PRIVATE tiff tiff_port)
 add_executable(tiffcrop ../placeholder.h)
 target_sources(tiffcrop PRIVATE tiffcrop.c ${MSVC_RESOURCE_FILE})
 set_target_properties(tiffcrop PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(tiffcrop PRIVATE tiff tiff_port CMath::CMath)
+target_link_libraries(tiffcrop PRIVATE tiff tiff_port ${CMath_LIBRARIES})
 
 add_executable(tiffdither ../placeholder.h)
 target_sources(tiffdither PRIVATE tiffdither.c ${MSVC_RESOURCE_FILE})
@@ -130,20 +130,17 @@ target_sources(tiffsplit PRIVATE tiffsplit.c ${MSVC_RESOURCE_FILE})
 set_target_properties(tiffsplit PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(tiffsplit PRIVATE tiff tiff_port)
 
-if(tiff-framework)
-  set_target_properties(fax2ps PROPERTIES 
-    FRAMEWORK TRUE
-    FRAMEWORK_VERSION "${LIBTIFF_VERSION_FULL}"
-    PRODUCT_BUNDLE_IDENTIFIER "gitlab.com/libtiff/libtiff"
-    PUBLIC_HEADER "${tiff_public_HEADERS}"
-    XCODE_ATTRIBUTE_INSTALL_PATH "@rpath"
-    XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ""
-    XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
-    XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO"
-    MACOSX_FRAMEWORK_IDENTIFIER "gitlab.com/libtiff/fax2ps"
-    MACOSX_FRAMEWORK_BUNDLE_VERSION "${LIBTIFF_VERSION_FULL}"
-    MACOSX_FRAMEWORK_SHORT_VERSION_STRING "${LIBTIFF_RELEASE_VERSION}"
-    MACOSX_RPATH TRUE)
+if(NOT CMAKE_CROSSCOMPILING)
+  add_executable(tiff_mkg3states ../placeholder.h)
+  target_sources(tiff_mkg3states PRIVATE mkg3states.c ../libtiff/tif_fax3.h)
+  set_target_properties(tiff_mkg3states PROPERTIES LINKER_LANGUAGE CXX)
+  target_link_libraries(tiff_mkg3states tiff tiff_port)
+
+  add_custom_target(tiff_faxtable
+          DEPENDS tiff_mkg3states
+          COMMAND ${CMAKE_COMMAND} -E rm "tif_fax3sm.c"
+          COMMAND tiff_mkg3states -b -c const "tif_fax3sm.c"
+          WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
 # rgb2ycbcr and thumbnail are intended to *NOT* be installed. They are for
@@ -178,6 +175,38 @@ if(OPENGL_SUPPORT)
 
   install(TARGETS tiffgt
           RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+endif()
+
+# Apply C++ compatibility mode to all tool targets if enabled
+foreach(target fax2ps
+               fax2tiff
+               pal2rgb
+               ppm2tiff
+               raw2tiff
+               rgb2ycbcr
+               thumbnail
+               tiff2bw
+               tiff2pdf
+               tiff2ps
+               tiff2rgba
+               tiffcmp
+               tiffcp
+               tiffcrop
+               tiffdither
+               tiffdump
+               tiffinfo
+               tiffmedian
+               tiffset
+               tiffsplit)
+  tiff_target_compile_as_cxx(${target})
+endforeach()
+
+if(NOT CMAKE_CROSSCOMPILING)
+  tiff_target_compile_as_cxx(tiff_mkg3states)
+endif()
+
+if(OPENGL_SUPPORT)
+  tiff_target_compile_as_cxx(tiffgt)
 endif()
 
 if(WEBP_SUPPORT AND EMSCRIPTEN)

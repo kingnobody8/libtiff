@@ -55,21 +55,21 @@ static int processCompressOptions(char *);
 
 static void compresscontig(unsigned char *out, unsigned char *rgb, uint32_t n)
 {
-    register int v, red = RED, green = GREEN, blue = BLUE;
+    int v, red = RED, green = GREEN, blue = BLUE;
 
     while (n-- > 0)
     {
         v = red * (*rgb++);
         v += green * (*rgb++);
         v += blue * (*rgb++);
-        *out++ = v >> 8;
+        *out++ = (unsigned char)(v >> 8);
     }
 }
 
 static void compresssep(unsigned char *out, unsigned char *r, unsigned char *g,
                         unsigned char *b, uint32_t n)
 {
-    register uint32_t red = RED, green = GREEN, blue = BLUE;
+    uint32_t red = RED, green = GREEN, blue = BLUE;
 
     while (n-- > 0)
         *out++ =
@@ -89,7 +89,7 @@ static int checkcmap(TIFF *tif, int n, uint16_t *r, uint16_t *g, uint16_t *b)
 static void compresspalette(unsigned char *out, unsigned char *data, uint32_t n,
                             uint16_t *rmap, uint16_t *gmap, uint16_t *bmap)
 {
-    register int v, red = RED, green = GREEN, blue = BLUE;
+    int v, red = RED, green = GREEN, blue = BLUE;
 
     while (n-- > 0)
     {
@@ -97,7 +97,7 @@ static void compresspalette(unsigned char *out, unsigned char *data, uint32_t n,
         v = red * rmap[ix];
         v += green * gmap[ix];
         v += blue * bmap[ix];
-        *out++ = v >> 8;
+        *out++ = (unsigned char)(v >> 8);
     }
 }
 
@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
     uint16_t *green;
     uint16_t *blue;
     tsize_t rowsize;
-    register uint32_t row;
-    register tsample_t s;
+    uint32_t row;
+    tsample_t s;
     unsigned char *inbuf, *outbuf;
     char thing[1024];
     int c;
@@ -369,14 +369,14 @@ static int processCompressOptions(char *opt)
     {
         char *cp = strchr(opt, ':');
         if (cp)
-            predictor = atoi(cp + 1);
+            predictor = (uint16_t)atoi(cp + 1);
         compression = COMPRESSION_LZW;
     }
     else if (strneq(opt, "zip", 3))
     {
         char *cp = strchr(opt, ':');
         if (cp)
-            predictor = atoi(cp + 1);
+            predictor = (uint16_t)atoi(cp + 1);
         compression = COMPRESSION_ADOBE_DEFLATE;
     }
     else
@@ -522,16 +522,16 @@ static void cpTags(TIFF *in, TIFF *out)
     {
         if (p->tag == TIFFTAG_GROUP3OPTIONS)
         {
-            uint16_t compression;
-            if (!TIFFGetField(in, TIFFTAG_COMPRESSION, &compression) ||
-                compression != COMPRESSION_CCITTFAX3)
+            uint16_t local_compression;
+            if (!TIFFGetField(in, TIFFTAG_COMPRESSION, &local_compression) ||
+                local_compression != COMPRESSION_CCITTFAX3)
                 continue;
         }
         if (p->tag == TIFFTAG_GROUP4OPTIONS)
         {
-            uint16_t compression;
-            if (!TIFFGetField(in, TIFFTAG_COMPRESSION, &compression) ||
-                compression != COMPRESSION_CCITTFAX4)
+            uint16_t local_compression;
+            if (!TIFFGetField(in, TIFFTAG_COMPRESSION, &local_compression) ||
+                local_compression != COMPRESSION_CCITTFAX4)
                 continue;
         }
         cpTag(in, out, p->tag, p->count, p->type);

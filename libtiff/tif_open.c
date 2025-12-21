@@ -109,7 +109,7 @@ void TIFFOpenOptionsSetMaxCumulatedMemAlloc(TIFFOpenOptions *opts,
     opts->max_cumulated_mem_alloc = max_cumulated_mem_alloc;
 }
 
-/** Whether a warning should be emitted when encoutering a unknown tag.
+/** Whether a warning should be emitted when encountering a unknown tag.
  * Default is FALSE since libtiff 4.7.1
  */
 void TIFFOpenOptionsSetWarnAboutUnknownTags(TIFFOpenOptions *opts,
@@ -308,6 +308,7 @@ TIFF *TIFFClientOpenExt(const char *name, const char *mode,
     TIFF *tif;
     int m;
     const char *cp;
+    tmsize_t size_to_alloc;
 
     /* The following are configuration checks. They should be redundant, but
      * should not compile to any actual code in an optimised release build
@@ -340,7 +341,7 @@ TIFF *TIFFClientOpenExt(const char *name, const char *mode,
     m = _TIFFgetMode(opts, clientdata, mode, module);
     if (m == -1)
         goto bad2;
-    tmsize_t size_to_alloc = (tmsize_t)(sizeof(TIFF) + strlen(name) + 1);
+    size_to_alloc = (tmsize_t)(sizeof(TIFF) + strlen(name) + 1);
     if (opts && opts->max_single_mem_alloc > 0 &&
         size_to_alloc > opts->max_single_mem_alloc)
     {

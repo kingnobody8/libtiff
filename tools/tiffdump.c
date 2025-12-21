@@ -25,6 +25,7 @@
 #include "libport.h"
 #include "tif_config.h"
 
+#include <math.h> /* for isfinite() */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -362,7 +363,7 @@ static uint64_t ReadDirectory(int fd, unsigned int ix, uint64_t off)
         Error("Could only read %" PRIu32 " of %" PRIu16
               " entries in directory at offset %" PRIu64,
               n, dircount, off);
-        dircount = n;
+        dircount = (uint16_t)n;
         nextdiroff = 0;
     }
     else
@@ -434,7 +435,7 @@ static uint64_t ReadDirectory(int fd, unsigned int ix, uint64_t off)
         if (type >= NWIDTHS)
             typewidth = 0;
         else
-            typewidth = datawidth[type];
+            typewidth = (uint16_t)datawidth[type];
         datasize = TIFFSafeMultiply(tmsize_t, count, typewidth);
         datasizeoverflow = (typewidth > 0 && datasize / typewidth != count);
         datafits = 1;
@@ -481,7 +482,7 @@ static uint64_t ReadDirectory(int fd, unsigned int ix, uint64_t off)
         }
         if (!datafits)
         {
-            datamem = _TIFFmalloc(datasize);
+            datamem = _TIFFmalloc((tmsize_t)datasize);
             if (datamem)
             {
                 if (_TIFF_lseek_f(fd, (_TIFF_off_t)dataoffset, 0) !=
@@ -491,7 +492,7 @@ static uint64_t ReadDirectory(int fd, unsigned int ix, uint64_t off)
                     _TIFFfree(datamem);
                     datamem = NULL;
                 }
-                else if (read(fd, datamem, (size_t)datasize) !=
+                else if (read(fd, datamem, (unsigned int)datasize) !=
                          (tmsize_t)datasize)
                 {
                     Error("Read error accessing tag %u value", tag);
@@ -539,7 +540,12 @@ static uint64_t ReadDirectory(int fd, unsigned int ix, uint64_t off)
                         break;
                 }
             }
-            PrintData(stdout, type, (uint32_t)count, datamem);
+            /* Silence Coverity Scan warning about tainted_data: Passing tainted
+             * expression *datamem to PrintData, which uses it as a divisor or
+             * modulus. False positive because division by zero is checked in
+             * PrintData(). */
+            /* coverity[tainted_data:SUPPRESS] */
+            PrintData(stdout, type, (uint32_t)count, (unsigned char *)datamem);
             if (datatruncated)
                 printf(" ...");
             if (!datafits)
@@ -798,7 +804,7 @@ static void PrintData(FILE *fd, uint16_t type, uint32_t count,
             uint32_t *lp = (uint32_t *)data;
             while (count-- > 0)
             {
-                if (lp[1] == 0)
+                if (lp[1] == 0 || !isfinite((double)lp[1]))
                     fprintf(fd, "%sNan (%" PRIu32 "/%" PRIu32 ")", sep, lp[0],
                             lp[1]);
                 else

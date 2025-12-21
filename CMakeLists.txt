@@ -24,10 +24,10 @@
 # LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 # OF THIS SOFTWARE.
 
-cmake_minimum_required(VERSION 3.9.0)
+cmake_minimum_required(VERSION 3.10)
 
-# Default policy is from 3.9.0
-cmake_policy(VERSION 3.9.0)
+# Default policy is from 3.10
+cmake_policy(VERSION 3.10)
 
 if(POLICY CMP0074)
   # Allow find_package() to use the ZLIB_ROOT variable, if available.
@@ -55,6 +55,13 @@ else()
   option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 endif()
 
+if (BUILD_SHARED_LIBS)
+  set(TIFF_STATIC_LIBS_DEFAULT FALSE)
+else()
+  set(TIFF_STATIC_LIBS_DEFAULT TRUE)
+ endif()
+
+option(tiff-static "build TIFF static libraries" ${TIFF_STATIC_LIBS_DEFAULT})
 option(tiff-tools "build TIFF tools" ON)
 option(tiff-tests "build TIFF tests" ON)
 option(tiff-contrib "build TIFF contrib" ON)
@@ -63,6 +70,12 @@ option(tiff-deprecated "build TIFF deprecated features" OFF)
 option(tiff-install "install TIFF targets" ${TIFF_INSTALL_DEFAULT})
 if(APPLE)
   option(tiff-framework "Build as Apple Frameworks" OFF)
+endif()
+
+if (tiff-static)
+  set(TIFF_BUILD_LIB_VALUE STATIC)
+else()
+  set(TIFF_BUILD_LIB_VALUE SHARED)
 endif()
 
 # Disable deprecated features to ensure clean build

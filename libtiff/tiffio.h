@@ -154,6 +154,18 @@ typedef struct
     float d_gammaB;
 } TIFFDisplay;
 
+/* YCbCr->RGB support for TIFFYCbCrToRGBInit() and TIFFYCbCrToRGB()
+ * Attention:
+ * Functions TIFFYCbCrToRGBInit() and TIFFYCbCrToRGB() require a user provided
+ * large memory buffer, where several tables can be setup.
+ * The pointers to these tables are stored in the structure TIFFYCbCrToRGB,
+ * which is located at the beginning of the buffer. Thus, this memory has to be
+ * allocated as follows:
+ *     TIFFYCbCrToRGB *ycbcr = (TIFFYCbCrToRGB *)_TIFFmalloc(
+ *         TIFFroundup_32(sizeof(TIFFYCbCrToRGB), sizeof(long)) +
+ *         4 * 256 * sizeof(TIFFRGBValue) + 2 * 256 * sizeof(int) +
+ *         3 * 256 * sizeof(int32_t));
+ */
 typedef struct
 {                           /* YCbCr->RGB support */
     TIFFRGBValue *clamptab; /* range clamping table */
@@ -257,7 +269,7 @@ struct _TIFFRGBAImage
 typedef int (*TIFFInitMethod)(TIFF *, int);
 typedef struct
 {
-    char *name;
+    const char *name;
     uint16_t scheme;
     TIFFInitMethod init;
 } TIFFCodec;
@@ -596,7 +608,7 @@ extern int TIFFReadRGBAImageOriented(TIFF *, uint32_t, uint32_t, uint32_t *,
     extern uint64_t TIFFGetStrileByteCountWithErr(TIFF *tif, uint32_t strile,
                                                   int *pbErr);
 
-#ifdef LOGLUV_PUBLIC
+#if LOGLUV_PUBLIC
 #define U_NEU 0.210526316
 #define V_NEU 0.473684211
 #define UVSCALE 410.
@@ -647,7 +659,7 @@ extern int TIFFReadRGBAImageOriented(TIFF *, uint32_t, uint32_t, uint32_t *,
         unsigned short field_bit;       /* bit in fieldsset bit vector */
         unsigned char field_oktochange; /* if true, can change while writing */
         unsigned char field_passcount;  /* if true, pass dir count on set */
-        char *field_name;               /* ASCII name */
+        const char *field_name;         /* ASCII name */
     } TIFFFieldInfo;
 
     extern int TIFFMergeFieldInfo(TIFF *, const TIFFFieldInfo[], uint32_t);

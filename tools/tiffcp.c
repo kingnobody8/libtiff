@@ -422,7 +422,7 @@ static void processZIPOptions(char *cp)
         {
             cp++;
             if (isdigit((int)*cp))
-                defpredictor = atoi(cp);
+                defpredictor = (uint16_t)atoi(cp);
             else if (*cp == 'p')
                 defpreset = atoi(++cp);
             else if (*cp == 's')
@@ -513,7 +513,7 @@ static int processCompressOptions(char *opt)
     {
         char *cp = strchr(opt, ':');
         if (cp)
-            defpredictor = atoi(cp + 1);
+            defpredictor = (uint16_t)atoi(cp + 1);
         defcompression = COMPRESSION_LZW;
     }
     else if (strneq(opt, "zip", 3))
@@ -1045,7 +1045,23 @@ static int tiffcp(TIFF *in, TIFF *out)
                     }
                 }
             }
-            /*fallthrough*/
+            if (preset != -1)
+            {
+                switch (compression)
+                {
+                    case COMPRESSION_ADOBE_DEFLATE:
+                    case COMPRESSION_DEFLATE:
+                        TIFFSetField(out, TIFFTAG_ZIPQUALITY, preset);
+                        break;
+                    case COMPRESSION_LZMA:
+                        TIFFSetField(out, TIFFTAG_LZMAPRESET, preset);
+                        break;
+                    case COMPRESSION_ZSTD:
+                        TIFFSetField(out, TIFFTAG_ZSTD_LEVEL, preset);
+                        break;
+                }
+            }
+            break;
         case COMPRESSION_WEBP:
             if (preset != -1)
             {
@@ -1096,7 +1112,7 @@ static int tiffcp(TIFF *in, TIFF *out)
             TIFFSetField(out, TIFFTAG_NUMBEROFINKS, ninks);
             if (TIFFGetField(in, TIFFTAG_INKNAMES, &inknames))
             {
-                int inknameslen = strlen(inknames) + 1;
+                size_t inknameslen = strlen(inknames) + 1;
                 const char *cp = inknames;
                 while (ninks > 1)
                 {
@@ -1105,7 +1121,14 @@ static int tiffcp(TIFF *in, TIFF *out)
                     inknameslen += (strlen(cp) + 1);
                     ninks--;
                 }
-                TIFFSetField(out, TIFFTAG_INKNAMES, inknameslen, inknames);
+                if (inknameslen <= INT_MAX)
+                    TIFFSetField(out, TIFFTAG_INKNAMES, (int)inknameslen,
+                                 inknames);
+                else
+                    TIFFError(TIFFFileName(in),
+                              "Error, length of inknames= %" PRIu64
+                              " exceeds size of int ",
+                              (uint64_t)inknameslen);
             }
         }
     }
@@ -1202,8 +1225,8 @@ typedef void biasFn(void *image, void *bias, uint32_t pixels);
 #define subtract(bits)                                                         \
     static void subtract##bits(void *i, void *b, uint32_t pixels)              \
     {                                                                          \
-        uint##bits##_t *image = i;                                             \
-        uint##bits##_t *biasx = b;                                             \
+        uint##bits##_t *image = (uint##bits##_t *)i;                           \
+        uint##bits##_t *biasx = (uint##bits##_t *)b;                           \
         while (pixels--)                                                       \
         {                                                                      \
             *image = *image > *biasx ? *image - *biasx : 0;                    \
@@ -1414,8 +1437,8 @@ DECLAREcpFunc(cpContig2SeparateByRow)
     tsize_t scanlinesizeout = TIFFScanlineSize(out);
     tdata_t inbuf;
     tdata_t outbuf;
-    register uint8_t *inp, *outp;
-    register uint32_t n;
+    uint8_t *inp, *outp;
+    uint32_t n;
     uint32_t row;
     tsample_t s;
     uint16_t bps = 0;
@@ -1483,8 +1506,8 @@ DECLAREcpFunc(cpSeparate2ContigByRow)
     tsize_t scanlinesizeout = TIFFScanlineSize(out);
     tdata_t inbuf;
     tdata_t outbuf;
-    register uint8_t *inp, *outp;
-    register uint32_t n;
+    uint8_t *inp, *outp;
+    uint32_t n;
     uint32_t row;
     tsample_t s;
     uint16_t bps = 0;
@@ -1544,7 +1567,7 @@ bad:
 }
 
 static void cpStripToTile(uint8_t *out, uint8_t *in, uint32_t rows,
-                          uint32_t cols, int outskew, int64_t inskew)
+                          uint32_t cols, int64_t outskew, int64_t inskew)
 {
     while (rows-- > 0)
     {
@@ -1606,13 +1629,13 @@ static int cpImage(TIFF *in, TIFF *out, readFunc fin, writeFunc fout,
     int status = 0;
     tdata_t buf = NULL;
     tsize_t scanlinesize = TIFFRasterScanlineSize(in);
-    tsize_t bytes = scanlinesize * (tsize_t)imagelength;
     /*
      * XXX: Check for integer overflow.
      */
     if (scanlinesize && imagelength &&
-        bytes / (tsize_t)imagelength == scanlinesize)
+        ((TIFF_TMSIZE_T_MAX / (tmsize_t)imagelength) > scanlinesize))
     {
+        tsize_t bytes = scanlinesize * (tsize_t)imagelength;
         buf = limitMalloc(bytes);
         if (buf)
         {
@@ -1631,7 +1654,8 @@ static int cpImage(TIFF *in, TIFF *out, readFunc fin, writeFunc fout,
     }
     else
     {
-        TIFFError(TIFFFileName(in), "Error, no space for image buffer");
+        TIFFError(TIFFFileName(in),
+                  "Error, no space for image buffer - integer overflow");
     }
 
     return status;
@@ -1684,7 +1708,7 @@ DECLAREreadFunc(readSeparateStripsIntoBuffer)
             {
                 uint8_t *bp = bufp + s;
                 tsize_t n = scanlinesize;
-                uint8_t *sbuf = scanline;
+                uint8_t *sbuf = (uint8_t *)scanline;
 
                 if (TIFFReadScanline(in, scanline, row, s) < 0 && !ignore)
                 {
@@ -1705,13 +1729,40 @@ done:
     return status;
 }
 
+/* This is a helper function. */
+static uint32_t _TIFFCastSSizeToUInt32(tmsize_t val, const char *module)
+{
+    if (val < 0)
+    {
+        TIFFError(module, "Unsigned integer underflow (negative)");
+        return 0;
+    }
+    /* sizeof(tmsize_t) is determined by SIZEOF_SIZE_T */
+#ifdef SIZEOF_SIZE_T
+#if SIZEOF_SIZE_T > 4
+    if (val > UINT32_MAX)
+    {
+        TIFFError(module, "Integer overflow");
+        return 0;
+    }
+#endif
+#else
+#pragma message(                                                               \
+    "---- Error: SIZEOF_SIZE_T not defined. Generate a compile error. ----")
+    SIZEOF_SIZE_T
+#endif
+    return (uint32_t)val;
+}
+
 DECLAREreadFunc(readContigTilesIntoBuffer)
 {
     int status = 1;
     tsize_t tilesize = TIFFTileSize(in);
     tdata_t tilebuf;
-    uint32_t imagew = TIFFScanlineSize(in);
-    uint32_t tilew = TIFFTileRowSize(in);
+    uint32_t imagew = _TIFFCastSSizeToUInt32(TIFFScanlineSize(in),
+                                             "readContigTilesIntoBuffer");
+    uint32_t tilew = _TIFFCastSSizeToUInt32(TIFFTileRowSize(in),
+                                            "readContigTilesIntoBuffer");
     int64_t iskew = (int64_t)imagew - (int64_t)tilew;
     uint8_t *bufp = (uint8_t *)buf;
     uint32_t tw, tl;
@@ -1745,11 +1796,11 @@ DECLAREreadFunc(readContigTilesIntoBuffer)
             {
                 uint32_t width = imagew - colb;
                 uint32_t oskew = tilew - width;
-                cpStripToTile(bufp + colb, tilebuf, nrow, width, oskew + iskew,
+                cpStripToTile(bufp + colb, (uint8_t *)tilebuf, nrow, width, oskew + iskew,
                               oskew);
             }
             else
-                cpStripToTile(bufp + colb, tilebuf, nrow, tilew, iskew, 0);
+                cpStripToTile(bufp + colb, (uint8_t *)tilebuf, nrow, tilew, iskew, 0);
             colb += tilew;
         }
         bufp += imagew * nrow;
@@ -1762,8 +1813,10 @@ done:
 DECLAREreadFunc(readSeparateTilesIntoBuffer)
 {
     int status = 1;
-    uint32_t imagew = TIFFRasterScanlineSize(in);
-    uint32_t tilew = TIFFTileRowSize(in);
+    uint32_t imagew = _TIFFCastSSizeToUInt32(TIFFRasterScanlineSize(in),
+                                             "readSeparateTilesIntoBuffer");
+    uint32_t tilew = _TIFFCastSSizeToUInt32(TIFFTileRowSize(in),
+                                            "readSeparateTilesIntoBuffer");
     int iskew;
     tsize_t tilesize = TIFFTileSize(in);
     tdata_t tilebuf;
@@ -1842,13 +1895,13 @@ DECLAREreadFunc(readSeparateTilesIntoBuffer)
                     uint32_t width = imagew - colb;
                     int oskew = tilew * spp - width;
                     cpSeparateBufToContigBuf(
-                        bufp + colb + s * bytes_per_sample, tilebuf, nrow,
+                        bufp + colb + s * bytes_per_sample, (uint8_t *)tilebuf, nrow,
                         width / (spp * bytes_per_sample), oskew + iskew,
                         oskew / spp, spp, bytes_per_sample);
                 }
                 else
                     cpSeparateBufToContigBuf(bufp + colb + s * bytes_per_sample,
-                                             tilebuf, nrow, tw, iskew, 0, spp,
+                                             (uint8_t *)tilebuf, nrow, tw, iskew, 0, spp,
                                              bytes_per_sample);
             }
             colb += tilew * spp;
@@ -1924,7 +1977,7 @@ DECLAREwriteFunc(writeBufferToSeparateStrips)
                                  : rowsperstrip;
             stripsize = TIFFVStripSize(out, nrows);
 
-            cpContigBufToSeparateBuf(obuf, (uint8_t *)buf + row * rowsize + s,
+            cpContigBufToSeparateBuf((uint8_t *)obuf, (uint8_t *)buf + row * rowsize + s,
                                      nrows, imagewidth, 0, 0, spp,
                                      bytes_per_sample);
             if (TIFFWriteEncodedStrip(out, strip++, obuf, stripsize) < 0)
@@ -1942,8 +1995,10 @@ DECLAREwriteFunc(writeBufferToSeparateStrips)
 
 DECLAREwriteFunc(writeBufferToContigTiles)
 {
-    uint32_t imagew = TIFFScanlineSize(out);
-    uint32_t tilew = TIFFTileRowSize(out);
+    uint32_t imagew = _TIFFCastSSizeToUInt32(TIFFScanlineSize(out),
+                                             "writeBufferToContigTiles");
+    uint32_t tilew = _TIFFCastSSizeToUInt32(TIFFTileRowSize(out),
+                                            "writeBufferToContigTiles");
     int iskew = imagew - tilew;
     tsize_t tilesize = TIFFTileSize(out);
     tdata_t obuf;
@@ -1975,11 +2030,11 @@ DECLAREwriteFunc(writeBufferToContigTiles)
             {
                 uint32_t width = imagew - colb;
                 int oskew = tilew - width;
-                cpStripToTile(obuf, bufp + colb, nrow, width, oskew,
+                cpStripToTile((uint8_t *)obuf, bufp + colb, nrow, width, oskew,
                               oskew + iskew);
             }
             else
-                cpStripToTile(obuf, bufp + colb, nrow, tilew, 0, iskew);
+                cpStripToTile((uint8_t *)obuf, bufp + colb, nrow, tilew, 0, iskew);
             if (TIFFWriteTile(out, obuf, col, row, 0, 0) < 0)
             {
                 TIFFError(TIFFFileName(out),
@@ -1998,9 +2053,12 @@ DECLAREwriteFunc(writeBufferToContigTiles)
 
 DECLAREwriteFunc(writeBufferToSeparateTiles)
 {
-    uint32_t imagew = TIFFScanlineSize(out);
-    tsize_t tilew = TIFFTileRowSize(out);
-    uint32_t iimagew = TIFFRasterScanlineSize(out);
+    uint32_t imagew = _TIFFCastSSizeToUInt32(TIFFScanlineSize(out),
+                                             "writeBufferToSeparateTiles");
+    uint32_t tilew = _TIFFCastSSizeToUInt32(TIFFTileRowSize(out),
+                                            "writeBufferToSeparateTiles");
+    uint32_t iimagew = _TIFFCastSSizeToUInt32(TIFFRasterScanlineSize(out),
+                                              "writeBufferToSeparateTiles");
     int iskew = iimagew - tilew * spp;
     tsize_t tilesize = TIFFTileSize(out);
     tdata_t obuf;
@@ -2052,13 +2110,13 @@ DECLAREwriteFunc(writeBufferToSeparateTiles)
                     uint32_t width = (imagew - colb);
                     int oskew = tilew - width;
 
-                    cpContigBufToSeparateBuf(obuf, bufp + (colb * spp) + s,
+                    cpContigBufToSeparateBuf((uint8_t *)obuf, bufp + (colb * spp) + s,
                                              nrow, width / bytes_per_sample,
                                              oskew, (oskew * spp) + iskew, spp,
                                              bytes_per_sample);
                 }
                 else
-                    cpContigBufToSeparateBuf(obuf, bufp + (colb * spp) + s,
+                    cpContigBufToSeparateBuf((uint8_t *)obuf, bufp + (colb * spp) + s,
                                              nrow, tilewidth, 0, iskew, spp,
                                              bytes_per_sample);
                 if (TIFFWriteTile(out, obuf, col, row, 0, s) < 0)

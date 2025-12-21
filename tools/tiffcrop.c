@@ -140,6 +140,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -216,7 +217,7 @@
 #define MAX_OUTBUFFS 8  /* must match larger of zones or regions */
 #define MAX_SECTIONS 32 /* number of sections per page to write to output */
 #define MAX_IMAGES                                                             \
-    2048              /* number of images in descrete list, not in the file    \
+    2048              /* number of images in discrete list, not in the file    \
                        */
 #define MAX_SAMPLES 8 /* maximum number of samples per pixel supported */
 #define MAX_BITS_PER_SAMPLE 64  /* maximum bit depth supported */
@@ -308,7 +309,7 @@ struct crop_mask
     double
         width; /* Selection width for master crop region in requested units */
     double
-        length; /* Selection length for master crop region in requesed units */
+        length; /* Selection length for master crop region in requested units */
     double margins[4];        /* Top, left, bottom, right margins */
     float xres;               /* Horizontal resolution read from image*/
     float yres;               /* Vertical resolution read from image */
@@ -996,7 +997,7 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
                   "Integer overflow when calculating buffer size.");
         exit(EXIT_FAILURE);
     }
-    tilebuf = limitMalloc(tile_buffsize + NUM_BUFF_OVERSIZE_BYTES);
+    tilebuf = (unsigned char *)limitMalloc(tile_buffsize + NUM_BUFF_OVERSIZE_BYTES);
     if (tilebuf == 0)
         return 0;
     tilebuf[tile_buffsize] = 0;
@@ -1072,6 +1073,7 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
                                           "Unable to extract row %" PRIu32
                                           " from tile %" PRIu32,
                                           row, TIFFCurrentTile(in));
+                                _TIFFfree(tilebuf);
                                 return 1;
                             }
                             break;
@@ -1086,6 +1088,7 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
                                               "Unable to extract row %" PRIu32
                                               " from tile %" PRIu32,
                                               row, TIFFCurrentTile(in));
+                                    _TIFFfree(tilebuf);
                                     return 1;
                                 }
                                 break;
@@ -1098,6 +1101,7 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
                                           "Unable to extract row %" PRIu32
                                           " from tile %" PRIu32,
                                           row, TIFFCurrentTile(in));
+                                _TIFFfree(tilebuf);
                                 return 1;
                             }
                             break;
@@ -1110,6 +1114,7 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
                                           "Unable to extract row %" PRIu32
                                           " from tile %" PRIu32,
                                           row, TIFFCurrentTile(in));
+                                _TIFFfree(tilebuf);
                                 return 1;
                             }
                             break;
@@ -1124,12 +1129,14 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
                                           "Unable to extract row %" PRIu32
                                           " from tile %" PRIu32,
                                           row, TIFFCurrentTile(in));
+                                _TIFFfree(tilebuf);
                                 return 1;
                             }
                             break;
                         default:
                             TIFFError("readContigTilesIntoBuffer",
                                       "Unsupported bit depth %" PRIu16, bps);
+                            _TIFFfree(tilebuf);
                             return 1;
                     }
                 }
@@ -1301,15 +1308,15 @@ static int readSeparateTilesIntoBuffer(TIFF *in, uint8_t *obuf,
 static int writeBufferToContigStrips(TIFF *out, uint8_t *buf,
                                      uint32_t imagelength)
 {
-    uint32_t row, nrows, rowsperstrip;
+    uint32_t row, nrows, local_rowsperstrip;
     tstrip_t strip = 0;
     tsize_t stripsize;
 
-    TIFFGetFieldDefaulted(out, TIFFTAG_ROWSPERSTRIP, &rowsperstrip);
-    for (row = 0; row < imagelength; row += rowsperstrip)
+    TIFFGetFieldDefaulted(out, TIFFTAG_ROWSPERSTRIP, &local_rowsperstrip);
+    for (row = 0; row < imagelength; row += local_rowsperstrip)
     {
-        nrows = (row + rowsperstrip > imagelength) ? imagelength - row
-                                                   : rowsperstrip;
+        nrows = (row + local_rowsperstrip > imagelength) ? imagelength - row
+                                                          : local_rowsperstrip;
         stripsize = TIFFVStripSize(out, nrows);
         if (TIFFWriteEncodedStrip(out, strip++, buf, stripsize) < 0)
         {
@@ -1337,7 +1344,7 @@ static int writeBufferToSeparateStrips(TIFF *out, uint8_t *buf, uint32_t length,
 {
     uint8_t *src;
     uint16_t bps;
-    uint32_t row, nrows, rowsize, rowsperstrip;
+    uint32_t row, nrows, rowsize, local_rowsperstrip;
     uint32_t bytes_per_sample;
     tsample_t s;
     tstrip_t strip = 0;
@@ -1345,7 +1352,7 @@ static int writeBufferToSeparateStrips(TIFF *out, uint8_t *buf, uint32_t length,
     tsize_t rowstripsize, scanlinesize = TIFFScanlineSize(out);
     tdata_t obuf;
 
-    (void)TIFFGetFieldDefaulted(out, TIFFTAG_ROWSPERSTRIP, &rowsperstrip);
+    (void)TIFFGetFieldDefaulted(out, TIFFTAG_ROWSPERSTRIP, &local_rowsperstrip);
     (void)TIFFGetFieldDefaulted(out, TIFFTAG_BITSPERSAMPLE, &bps);
     bytes_per_sample = (bps + 7) / 8;
     if (width == 0 || (uint32_t)bps * (uint32_t)spp > UINT32_MAX / width ||
@@ -1358,15 +1365,15 @@ static int writeBufferToSeparateStrips(TIFF *out, uint8_t *buf, uint32_t length,
     }
     rowsize =
         ((bps * spp * width) + 7U) / 8; /* source has interleaved samples */
-    if (bytes_per_sample == 0 || rowsperstrip > UINT32_MAX / bytes_per_sample ||
-        rowsperstrip * bytes_per_sample > UINT32_MAX / (width + 1))
+    if (bytes_per_sample == 0 || local_rowsperstrip > UINT32_MAX / bytes_per_sample ||
+        local_rowsperstrip * bytes_per_sample > UINT32_MAX / (width + 1))
     {
         TIFFError(TIFFFileName(out),
                   "Error, uint32_t overflow when computing rowsperstrip * "
                   "bytes_per_sample * (width + 1)");
         return 1;
     }
-    rowstripsize = (tsize_t)rowsperstrip * bytes_per_sample * (width + 1);
+    rowstripsize = (tsize_t)local_rowsperstrip * bytes_per_sample * (width + 1);
 
     /* Add 3 padding bytes for extractContigSamples32bits */
     obuf = limitMalloc(rowstripsize + NUM_BUFF_OVERSIZE_BYTES);
@@ -1375,14 +1382,14 @@ static int writeBufferToSeparateStrips(TIFF *out, uint8_t *buf, uint32_t length,
 
     for (s = 0; s < spp; s++)
     {
-        for (row = 0; row < length; row += rowsperstrip)
+        for (row = 0; row < length; row += local_rowsperstrip)
         {
-            nrows = (row + rowsperstrip > length) ? length - row : rowsperstrip;
+            nrows = (row + local_rowsperstrip > length) ? length - row : local_rowsperstrip;
 
             stripsize = TIFFVStripSize(out, nrows);
             src = buf + (row * rowsize);
             memset(obuf, '\0', rowstripsize + NUM_BUFF_OVERSIZE_BYTES);
-            if (extractContigSamplesToBuffer(obuf, src, nrows, width, s, spp,
+            if (extractContigSamplesToBuffer((uint8_t *)obuf, src, nrows, width, s, spp,
                                              bps, dump))
             {
                 _TIFFfree(obuf);
@@ -1405,7 +1412,7 @@ static int writeBufferToSeparateStrips(TIFF *out, uint8_t *buf, uint32_t length,
                     s + 1, strip + 1, stripsize, row + 1,
                     (uint32_t)scanlinesize, src - buf);
                 dump_buffer(dump->outfile, dump->format, nrows,
-                            (uint32_t)scanlinesize, row, obuf);
+                            (uint32_t)scanlinesize, row, (unsigned char *)obuf);
             }
 
             if (TIFFWriteEncodedStrip(out, strip++, obuf, stripsize) < 0)
@@ -1482,7 +1489,7 @@ static int writeBufferToContigTiles(TIFF *out, uint8_t *buf,
     src_rowsize = ((imagewidth * spp * bps) + 7U) / 8;
 
     /* Add 3 padding bytes for extractContigSamples32bits */
-    tilebuf = limitMalloc(tile_buffsize + NUM_BUFF_OVERSIZE_BYTES);
+    tilebuf = (unsigned char *)limitMalloc(tile_buffsize + NUM_BUFF_OVERSIZE_BYTES);
     if (tilebuf == 0)
         return 1;
     memset(tilebuf, 0, tile_buffsize + NUM_BUFF_OVERSIZE_BYTES);
@@ -1581,7 +1588,7 @@ static int writeBufferToSeparateTiles(TIFF *out, uint8_t *buf,
 
             for (s = 0; s < spp; s++)
             {
-                if (extractContigSamplesToTileBuffer(obuf, bufp, nrow, ncol,
+                if (extractContigSamplesToTileBuffer((uint8_t *)obuf, bufp, nrow, ncol,
                                                      imagewidth, tw, s, 1, spp,
                                                      bps, dump) > 0)
                 {
@@ -1674,14 +1681,14 @@ static int processCompressOptions(char *opt)
     {
         cp = strchr(opt, ':');
         if (cp)
-            defpredictor = atoi(cp + 1);
+            defpredictor = (uint16_t)atoi(cp + 1);
         defcompression = COMPRESSION_LZW;
     }
     else if (strneq(opt, "zip", 3))
     {
         cp = strchr(opt, ':');
         if (cp)
-            defpredictor = atoi(cp + 1);
+            defpredictor = (uint16_t)atoi(cp + 1);
         defcompression = COMPRESSION_ADOBE_DEFLATE;
     }
     else
@@ -1836,7 +1843,7 @@ void process_command_opts(int argc, char *argv[], char *mp, char *mode,
                           struct dump_opts *dump, unsigned int *imagelist,
                           unsigned int *image_count)
 {
-    int c, good_args = 0;
+    int c;
     char *opt_offset = NULL; /* Position in string of value sought */
     char *opt_ptr = NULL;    /* Pointer to next token in option set */
     char *sep = NULL;        /* Pointer to a token separator */
@@ -1852,7 +1859,6 @@ void process_command_opts(int argc, char *argv[], char *mp, char *mode,
                        "ac:d:e:f:hik:l:m:p:r:stvw:z:BCD:E:F:H:I:J:K:LMN:O:P:R:"
                        "S:U:V:X:Y:Z:")) != -1)
     {
-        good_args++;
         switch (c)
         {
             case 'a':
@@ -2079,14 +2085,14 @@ void process_command_opts(int argc, char *argv[], char *mp, char *mode,
                     /* convert option to lowercase */
                     end = (unsigned int)strlen(opt_ptr);
                     for (i = 0; i < end; i++)
-                        *(opt_ptr + i) = tolower((int)*(opt_ptr + i));
+                        *(opt_ptr + i) = (char)tolower((int)*(opt_ptr + i));
                     /* Look for dump format specification */
                     if (strncmp(opt_ptr, "for", 3) == 0)
                     {
                         /* convert value to lowercase */
                         end = (unsigned int)strlen(opt_offset + 1);
                         for (i = 1; i <= end; i++)
-                            *(opt_offset + i) = tolower((int)*(opt_offset + i));
+                            *(opt_offset + i) = (char)tolower((int)*(opt_offset + i));
                         /* check dump format value */
                         if (strncmp(opt_offset + 1, "txt", 3) == 0)
                         {
@@ -2631,6 +2637,7 @@ int main(int argc, char *argv[])
     size_t length;
     char temp_filename[PATH_MAX + 16]; /* Extra space keeps the compiler from
                                           complaining */
+    int retval = 0;                    /* return value of tiffcrop */
 
     assert(NUM_BUFF_OVERSIZE_BYTES >= 3);
 
@@ -2665,16 +2672,19 @@ int main(int argc, char *argv[])
         in = TIFFOpenExt(argv[optind], "r", opts);
         TIFFOpenOptionsFree(opts);
         if (in == NULL)
-            return (-3);
+        {
+            TIFFError("An input file cannot be opened: ", "%s", argv[optind]);
+            retval = -3;
+            goto failure;
+        }
 
         /* If only one input file is specified, we can use directory count */
         total_images = TIFFNumberOfDirectories(in);
         if (total_images > TIFF_DIR_MAX)
         {
             TIFFError(TIFFFileName(in), "File contains too many directories");
-            if (out != NULL)
-                (void)TIFFClose(out);
-            return (1);
+            retval = 1;
+            goto failure;
         }
         if (image_count == 0)
         {
@@ -2705,18 +2715,16 @@ int main(int argc, char *argv[])
                       "Invalid image number %" PRIu32
                       ", File contains only %" PRIu32 " images",
                       dirnum + 1u, total_images);
-            if (out != NULL)
-                (void)TIFFClose(out);
-            return (1);
+            retval = 1;
+            goto failure;
         }
 
         if (dirnum != 0 && !TIFFSetDirectory(in, (tdir_t)dirnum))
         {
             TIFFError(TIFFFileName(in),
                       "Error, setting subdirectory at %" PRIu32, dirnum);
-            if (out != NULL)
-                (void)TIFFClose(out);
-            return (1);
+            retval = 1;
+            goto failure;
         }
 
         end_of_input = FALSE;
@@ -2750,7 +2758,8 @@ int main(int argc, char *argv[])
                     {
                         TIFFError("Unable to open dump file for writing", "%s",
                                   temp_filename);
-                        exit(EXIT_FAILURE);
+                        retval = EXIT_FAILURE;
+                        goto failure;
                     }
                     dump_info(dump.infile, dump.format, "Reading image",
                               "%u from %s", dump_images, TIFFFileName(in));
@@ -2771,7 +2780,8 @@ int main(int argc, char *argv[])
                     {
                         TIFFError("Unable to open dump file for writing", "%s",
                                   temp_filename);
-                        exit(EXIT_FAILURE);
+                        retval = EXIT_FAILURE;
+                        goto failure;
                     }
                     dump_info(dump.outfile, dump.format, "Writing image",
                               "%u from %s", dump_images, TIFFFileName(in));
@@ -2785,7 +2795,8 @@ int main(int argc, char *argv[])
             if (loadImage(in, &image, &dump, &read_buff))
             {
                 TIFFError("main", "Unable to load source image");
-                exit(EXIT_FAILURE);
+                retval = EXIT_FAILURE;
+                goto failure;
             }
 
             /* Correct the image orientation if it was not ORIENTATION_TOPLEFT.
@@ -2799,7 +2810,8 @@ int main(int argc, char *argv[])
             if (getCropOffsets(&image, &crop, &dump))
             {
                 TIFFError("main", "Unable to define crop regions");
-                exit(EXIT_FAILURE);
+                retval = EXIT_FAILURE;
+                goto failure;
             }
 
             /* Crop input image and copy zones and regions from input image into
@@ -2809,7 +2821,8 @@ int main(int argc, char *argv[])
                 if (processCropSelections(&image, &crop, &read_buff, seg_buffs))
                 {
                     TIFFError("main", "Unable to process image selections");
-                    exit(EXIT_FAILURE);
+                    retval = EXIT_FAILURE;
+                    goto failure;
                 }
             }
             else /* Single image segment without zones or regions */
@@ -2817,7 +2830,8 @@ int main(int argc, char *argv[])
                 if (createCroppedImage(&image, &crop, &read_buff, &crop_buff))
                 {
                     TIFFError("main", "Unable to create output image");
-                    exit(EXIT_FAILURE);
+                    retval = EXIT_FAILURE;
+                    goto failure;
                 }
             }
             /* Format and write selected image parts to output file(s). */
@@ -2831,21 +2845,26 @@ int main(int argc, char *argv[])
                     {
                         TIFFError("main",
                                   "Unable to write new image selections");
-                        exit(EXIT_FAILURE);
+                        retval = EXIT_FAILURE;
+                        goto failure;
                     }
                 }
                 else /* One file all images and sections */
                 {
                     if (update_output_file(&out, mp, crop.exp_mode,
                                            argv[argc - 1], &next_page))
-                        exit(EXIT_FAILURE);
+                    {
+                        retval = EXIT_FAILURE;
+                        goto failure;
+                    }
                     if (writeCroppedImage(in, out, &image, &dump,
                                           crop.combined_width,
                                           crop.combined_length, crop_buff,
                                           next_page, total_pages))
                     {
                         TIFFError("main", "Unable to write new image");
-                        exit(EXIT_FAILURE);
+                        retval = EXIT_FAILURE;
+                        goto failure;
                     }
                 }
             }
@@ -2863,7 +2882,8 @@ int main(int argc, char *argv[])
                                               &dump))
                 {
                     TIFFError("main", "Unable to compute output section data");
-                    exit(EXIT_FAILURE);
+                    retval = EXIT_FAILURE;
+                    goto failure;
                 }
                 /* If there are multiple files on the command line, the final
                  * one is assumed to be the output filename into which the
@@ -2871,13 +2891,17 @@ int main(int argc, char *argv[])
                  */
                 if (update_output_file(&out, mp, crop.exp_mode, argv[argc - 1],
                                        &next_page))
-                    exit(EXIT_FAILURE);
+                {
+                    retval = EXIT_FAILURE;
+                    goto failure;
+                }
 
                 if (writeImageSections(in, out, &image, &page, sections, &dump,
                                        sect_src, &sect_buff))
                 {
                     TIFFError("main", "Unable to write image sections");
-                    exit(EXIT_FAILURE);
+                    retval = EXIT_FAILURE;
+                    goto failure;
                 }
             }
 
@@ -2897,11 +2921,16 @@ int main(int argc, char *argv[])
                 end_of_input = TRUE;
         }
         TIFFClose(in);
+        in = NULL;
         optind++;
     }
 
+failure:
+    /* In error case all files needs to be closed and
+     * all buffers need to be released. */
+
     /* If we did not use the read buffer as the crop buffer */
-    if (read_buff)
+    if (read_buff && read_buff != crop_buff)
         _TIFFfree(read_buff);
 
     if (crop_buff)
@@ -2922,17 +2951,22 @@ int main(int argc, char *argv[])
         if (dump.outfile != NULL)
         {
             dump_info(dump.outfile, dump.format, "", "Completed run for %s",
-                      TIFFFileName(out));
+                      out ? TIFFFileName(out) : "(not opened)");
             fclose(dump.outfile);
         }
     }
 
-    if (out != NULL)
+    if (in != NULL)
     {
-        TIFFClose(out);
+        (void)TIFFClose(in);
     }
 
-    return (0);
+    if (out != NULL)
+    {
+        (void)TIFFClose(out);
+    }
+
+    return (retval);
 } /* end main */
 
 /* Debugging functions */
@@ -3542,9 +3576,9 @@ static int extractContigSamples24bits(uint8_t *in, uint8_t *out, uint32_t cols,
             }
             else /* If we have a full buffer's worth, write it out */
             {
-                bytebuff1 = (buff2 >> 24);
+                bytebuff1 = (uint8_t)(buff2 >> 24);
                 *dst++ = bytebuff1;
-                bytebuff2 = (buff2 >> 16);
+                bytebuff2 = (uint8_t)(buff2 >> 16);
                 *dst++ = bytebuff2;
                 ready_bits -= 16;
 
@@ -3984,9 +4018,9 @@ static int extractContigSamplesShifted24bits(uint8_t *in, uint8_t *out,
             }
             else /* If we have a full buffer's worth, write it out */
             {
-                bytebuff1 = (buff2 >> 24);
+                bytebuff1 = (uint8_t)(buff2 >> 24);
                 *dst++ = bytebuff1;
-                bytebuff2 = (buff2 >> 16);
+                bytebuff2 = (uint8_t)(buff2 >> 16);
                 *dst++ = bytebuff2;
                 ready_bits -= 16;
 
@@ -4219,7 +4253,7 @@ static int extractContigSamplesToBuffer(uint8_t *out, uint8_t *in,
 
 static int extractContigSamplesToTileBuffer(
     uint8_t *out, uint8_t *in, uint32_t rows, uint32_t cols,
-    uint32_t imagewidth, uint32_t tilewidth, tsample_t sample, uint16_t count,
+    uint32_t imagewidth, uint32_t local_tilewidth, tsample_t sample, uint16_t count,
     uint16_t spp, uint16_t bps, struct dump_opts *dump)
 {
     int shift_width, bytes_per_sample, bytes_per_pixel;
@@ -4247,7 +4281,7 @@ static int extractContigSamplesToTileBuffer(
     }
 
     src_rowsize = ((bps * spp * imagewidth) + 7) / 8;
-    dst_rowsize = ((bps * tilewidth * count) + 7) / 8;
+    dst_rowsize = ((bps * local_tilewidth * count) + 7) / 8;
 
     for (row = 0; row < rows; row++)
     {
@@ -4307,7 +4341,6 @@ static int readContigStripsIntoBuffer(TIFF *in, uint8_t *buf)
     uint32_t strip, nstrips = TIFFNumberOfStrips(in);
     tmsize_t stripsize = TIFFStripSize(in);
     tmsize_t rows = 0;
-    uint32_t rps = TIFFGetFieldDefaulted(in, TIFFTAG_ROWSPERSTRIP, &rps);
     tsize_t scanline_size = TIFFScanlineSize(in);
 
     if (scanline_size == 0)
@@ -4367,7 +4400,7 @@ static int combineSeparateSamplesBytes(unsigned char *srcbuffs[],
     {
         if ((dumpfile != NULL) && (level == 2))
         {
-            for (s = 0; s < spp; s++)
+            for (s = 0; (s < spp) && (s < MAX_SAMPLES); s++)
             {
                 dump_info(dumpfile, format, "combineSeparateSamplesBytes",
                           "Input data, Sample %" PRIu16, s);
@@ -4686,9 +4719,9 @@ static int combineSeparateSamples24bits(uint8_t *in[], uint8_t *out,
                 /* If we have a full buffer's worth, write it out */
                 if (ready_bits >= 16)
                 {
-                    bytebuff1 = (buff2 >> 24);
+                    bytebuff1 = (uint8_t)(buff2 >> 24);
                     *dst++ = bytebuff1;
-                    bytebuff2 = (buff2 >> 16);
+                    bytebuff2 = (uint8_t)(buff2 >> 16);
                     *dst++ = bytebuff2;
                     ready_bits -= 16;
 
@@ -5252,9 +5285,9 @@ static int combineSeparateTileSamples24bits(uint8_t *in[], uint8_t *out,
                 /* If we have a full buffer's worth, write it out */
                 if (ready_bits >= 16)
                 {
-                    bytebuff1 = (buff2 >> 24);
+                    bytebuff1 = (uint8_t)(buff2 >> 24);
                     *dst++ = bytebuff1;
-                    bytebuff2 = (buff2 >> 16);
+                    bytebuff2 = (uint8_t)(buff2 >> 16);
                     *dst++ = bytebuff2;
                     ready_bits -= 16;
 
@@ -5546,7 +5579,7 @@ static int readSeparateStripsIntoBuffer(TIFF *in, uint8_t *obuf,
     for (s = 0; (s < spp) && (s < MAX_SAMPLES); s++)
     {
         srcbuffs[s] = NULL;
-        buff = limitMalloc(stripsize + NUM_BUFF_OVERSIZE_BYTES);
+        buff = (unsigned char *)limitMalloc(stripsize + NUM_BUFF_OVERSIZE_BYTES);
         if (!buff)
         {
             TIFFError(
@@ -5777,6 +5810,7 @@ static void initCropMasks(struct crop_mask *cps)
     cps->invert = (uint16_t)0;
     cps->zones = (uint32_t)0;
     cps->regions = (uint32_t)0;
+    cps->selections = (uint16_t)0;
     for (i = 0; i < MAX_REGIONS; i++)
     {
         cps->corners[i].X1 = 0.0;
@@ -6117,6 +6151,9 @@ static int computeInputPixelOffsets(struct crop_mask *crop,
     off->endx = endx;
     off->endy = endy;
 
+    /* Silence Coverity Scan warning because this seems to be a false positive.
+     * "endx is known to be equal to 4294967295" might not be right here. */
+    /* coverity[overflow_const:SUPPRESS] */
     if (endx + 1 <= startx)
     {
         TIFFError(
@@ -6539,7 +6576,7 @@ static int getCropOffsets(struct image_data *image, struct crop_mask *crop,
         i++;
     }
     /* set number of generated regions out of given zones */
-    crop->selections = i;
+    crop->selections = (uint16_t)i;
     return (0);
 } /* end getCropOffsets */
 
@@ -6756,7 +6793,7 @@ static int computeOutputPixelOffsets(struct crop_mask *crop,
     if (orows < 1)
         orows = 1;
 
-    /* Always return rows and cols from calcuation above.
+    /* Always return rows and cols from calculation above.
      * (correct values needed external to this function)
      * Warn, if user input settings has been changed.
      */
@@ -7161,6 +7198,7 @@ static int loadImage(TIFF *in, struct image_data *image, struct dump_opts *dump,
     if (read_buff)
     {
         _TIFFfree(read_buff);
+        *read_ptr = NULL;
     }
     if (buffsize > 0xFFFFFFFFU - 3)
     {
@@ -7257,6 +7295,10 @@ static int loadImage(TIFF *in, struct image_data *image, struct dump_opts *dump,
                 (uint64_t)scanlinesize);
         }
         for (i = 0; i < length; i++)
+            /* Apparently, the scanlinesize test above was accepted to fail.
+             * Thus silence Coverity Scan warning because this seems to be
+             * intentional. */
+            /* coverity[overflow_sink:SUPPRESS] */
             dump_buffer(dump->infile, dump->format, 1, (uint32_t)scanlinesize,
                         i, read_buff + (i * scanlinesize));
     }
@@ -7856,7 +7898,7 @@ static int extractImageSection(struct image_data *image,
             TIFFError("", "Src offset: %8" PRIu32 ", Dst offset: %8" PRIu32,
                       src_offset, dst_offset);
 #endif
-            if (src_offset + full_bytes >= check_buffsize)
+            if (((int64_t)src_offset + full_bytes) >= check_buffsize)
             {
                 printf(
                     "Bad input. Preventing reading outside of input buffer.\n");
@@ -7908,7 +7950,7 @@ static int extractImageSection(struct image_data *image,
             bytebuff1 = bytebuff2 = 0;
             if (shift1 == 0) /* the region is byte and sample aligned */
             {
-                if (offset1 + full_bytes >= check_buffsize)
+                if (((int64_t)offset1 + full_bytes) >= check_buffsize)
                 {
                     printf("Bad input. Preventing reading outside of input "
                            "buffer.\n");
@@ -7941,7 +7983,7 @@ static int extractImageSection(struct image_data *image,
                 {
                     /* Only copy higher bits of samples and mask lower bits of
                      * not wanted column samples to zero */
-                    if (offset1 + full_bytes >= check_buffsize)
+                    if (((int64_t)offset1 + full_bytes) >= check_buffsize)
                     {
                         printf("Bad input. Preventing reading outside of input "
                                "buffer.\n");
@@ -7987,7 +8029,7 @@ static int extractImageSection(struct image_data *image,
                      * shift1 bits before save to destination.*/
                     /* Attention: src_buff size needs to be some bytes larger
                      * than image size, because could read behind image here. */
-                    if (offset1 + j + 1 >= check_buffsize)
+                    if (((int64_t)offset1 + j + 1) >= check_buffsize)
                     {
                         printf("Bad input. Preventing reading outside of input "
                                "buffer.\n");
@@ -8017,7 +8059,7 @@ static int extractImageSection(struct image_data *image,
                 dst_offset += full_bytes;
 
                 /* Copy the trailing_bits for the last byte in the destination
-                   buffer. Could come from one ore two bytes of the source
+                   buffer. Could come from one or two bytes of the source
                    buffer. */
                 if (trailing_bits != 0)
                 {
@@ -8556,8 +8598,8 @@ static int createImageSection(uint32_t sectsize, unsigned char **sect_buff_ptr)
     {
         if (prev_sectsize < sectsize)
         {
-            new_buff =
-                _TIFFrealloc(sect_buff, sectsize + NUM_BUFF_OVERSIZE_BYTES);
+            new_buff = (unsigned char *)_TIFFrealloc(
+                sect_buff, sectsize + NUM_BUFF_OVERSIZE_BYTES);
             if (!new_buff)
             {
                 _TIFFfree(sect_buff);
@@ -8612,8 +8654,8 @@ static int processCropSelections(struct image_data *image,
             prev_cropsize = seg_buffs[0].size;
             if (prev_cropsize < cropsize)
             {
-                next_buff =
-                    _TIFFrealloc(crop_buff, cropsize + NUM_BUFF_OVERSIZE_BYTES);
+                next_buff = (unsigned char *)_TIFFrealloc(
+                    crop_buff, cropsize + NUM_BUFF_OVERSIZE_BYTES);
                 if (!next_buff)
                 {
                     _TIFFfree(crop_buff);
@@ -8733,7 +8775,7 @@ static int processCropSelections(struct image_data *image,
                 prev_cropsize = seg_buffs[i].size;
                 if (prev_cropsize < cropsize)
                 {
-                    next_buff = _TIFFrealloc(
+                    next_buff = (unsigned char *)_TIFFrealloc(
                         crop_buff, cropsize + NUM_BUFF_OVERSIZE_BYTES);
                     if (!next_buff)
                     {
@@ -8902,8 +8944,8 @@ static int createCroppedImage(struct image_data *image, struct crop_mask *crop,
     {
         if (prev_cropsize < cropsize)
         {
-            new_buff =
-                _TIFFrealloc(crop_buff, cropsize + NUM_BUFF_OVERSIZE_BYTES);
+            new_buff = (unsigned char *)_TIFFrealloc(
+                crop_buff, cropsize + NUM_BUFF_OVERSIZE_BYTES);
             if (!new_buff)
             {
                 free(crop_buff);
@@ -9555,9 +9597,9 @@ static int rotateContigSamples24bits(uint16_t rotation, uint16_t spp,
             /* If we have a full buffer's worth, write it out */
             if (ready_bits >= 16)
             {
-                bytebuff1 = (buff2 >> 24);
+                bytebuff1 = (uint8_t)(buff2 >> 24);
                 *dst++ = bytebuff1;
-                bytebuff2 = (buff2 >> 16);
+                bytebuff2 = (uint8_t)(buff2 >> 16);
                 *dst++ = bytebuff2;
                 ready_bits -= 16;
 
@@ -10251,9 +10293,9 @@ static int reverseSamples24bits(uint16_t spp, uint16_t bps, uint32_t width,
             }
             else /* If we have a full buffer's worth, write it out */
             {
-                bytebuff1 = (buff2 >> 24);
+                bytebuff1 = (uint8_t)(buff2 >> 24);
                 *dst++ = bytebuff1;
-                bytebuff2 = (buff2 >> 16);
+                bytebuff2 = (uint8_t)(buff2 >> 16);
                 *dst++ = bytebuff2;
                 ready_bits -= 16;
 
@@ -10332,14 +10374,16 @@ static int reverseSamples32bits(uint16_t spp, uint16_t bps, uint32_t width,
             match_bits = mask_bits << (64 - high_bit - bps);
             if (little_endian)
             {
-                longbuff1 =
-                    (src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3];
+                longbuff1 = ((uint32_t)src[0] << 24) |
+                            ((uint32_t)src[1] << 16) | ((uint32_t)src[2] << 8) |
+                            (uint32_t)src[3];
                 longbuff2 = longbuff1;
             }
             else
             {
-                longbuff1 =
-                    (src[3] << 24) | (src[2] << 16) | (src[1] << 8) | src[0];
+                longbuff1 = ((uint32_t)src[3] << 24) |
+                            ((uint32_t)src[2] << 16) | ((uint32_t)src[1] << 8) |
+                            (uint32_t)src[0];
                 longbuff2 = longbuff1;
             }
             buff3 = ((uint64_t)longbuff1 << 32) | longbuff2;

@@ -160,7 +160,7 @@ static int TIFFFillStripPartial(TIFF *tif, int strip, tmsize_t read_ahead,
                                 int restart)
 {
     static const char module[] = "TIFFFillStripPartial";
-    register TIFFDirectory *td = &tif->tif_dir;
+    TIFFDirectory *td = &tif->tif_dir;
     tmsize_t unused_data;
     uint64_t read_offset;
     tmsize_t to_read;
@@ -308,7 +308,7 @@ static int TIFFFillStripPartial(TIFF *tif, int strip, tmsize_t read_ahead,
  */
 static int TIFFSeek(TIFF *tif, uint32_t row, uint16_t sample)
 {
-    register TIFFDirectory *td = &tif->tif_dir;
+    TIFFDirectory *td = &tif->tif_dir;
     uint32_t strip;
     int whole_strip;
     tmsize_t read_ahead = 0;
@@ -351,15 +351,14 @@ static int TIFFSeek(TIFF *tif, uint32_t row, uint16_t sample)
          * chunk strip */
         whole_strip = 1;
     }
-#else
-    whole_strip = 1;
-#endif
 
     if (!whole_strip)
     {
         /* 16 is for YCbCr mode where we may need to read 16 */
         /* lines at a time to get a decompressed line, and 5000 */
         /* is some constant value, for example for JPEG tables */
+
+        /* coverity[dead_error_line:SUPPRESS] */
         if (tif->tif_scanlinesize < TIFF_TMSIZE_T_MAX / 16 &&
             tif->tif_scanlinesize * 16 < TIFF_TMSIZE_T_MAX - 5000)
         {
@@ -370,6 +369,9 @@ static int TIFFSeek(TIFF *tif, uint32_t row, uint16_t sample)
             read_ahead = tif->tif_scanlinesize;
         }
     }
+#else
+    whole_strip = 1;
+#endif
 
     /*
      * If we haven't loaded this strip, do so now, possibly
@@ -383,18 +385,22 @@ static int TIFFSeek(TIFF *tif, uint32_t row, uint16_t sample)
             if (!TIFFFillStrip(tif, strip))
                 return (0);
         }
+#if defined(CHUNKY_STRIP_READ_SUPPORT)
         else
         {
             if (!TIFFFillStripPartial(tif, strip, read_ahead, 1))
                 return 0;
         }
+#endif
     }
 
+#if defined(CHUNKY_STRIP_READ_SUPPORT)
     /*
     ** If we already have some data loaded, do we need to read some more?
     */
     else if (!whole_strip)
     {
+        /* coverity[dead_error_line:SUPPRESS] */
         if (((tif->tif_rawdata + tif->tif_rawdataloaded) - tif->tif_rawcp) <
                 read_ahead &&
             (uint64_t)tif->tif_rawdataoff + tif->tif_rawdataloaded <
@@ -404,6 +410,7 @@ static int TIFFSeek(TIFF *tif, uint32_t row, uint16_t sample)
                 return 0;
         }
     }
+#endif
 
     if (row < tif->tif_row)
     {
@@ -546,9 +553,9 @@ tmsize_t TIFFReadEncodedStrip(TIFF *tif, uint32_t strip, void *buf,
 
         if (!isFillOrder(tif, td->td_fillorder) &&
             (tif->tif_flags & TIFF_NOBITREV) == 0)
-            TIFFReverseBits(buf, stripsize);
+            TIFFReverseBits((uint8_t *)buf, stripsize);
 
-        (*tif->tif_postdecode)(tif, buf, stripsize);
+        (*tif->tif_postdecode)(tif, (uint8_t *)buf, stripsize);
         return (stripsize);
     }
 
@@ -562,9 +569,9 @@ tmsize_t TIFFReadEncodedStrip(TIFF *tif, uint32_t strip, void *buf,
             memset(buf, 0, (size_t)stripsize);
         return ((tmsize_t)(-1));
     }
-    if ((*tif->tif_decodestrip)(tif, buf, stripsize, plane) <= 0)
+    if ((*tif->tif_decodestrip)(tif, (uint8_t *)buf, stripsize, plane) <= 0)
         return ((tmsize_t)(-1));
-    (*tif->tif_postdecode)(tif, buf, stripsize);
+    (*tif->tif_postdecode)(tif, (uint8_t *)buf, stripsize);
     return (stripsize);
 }
 
@@ -604,9 +611,9 @@ tmsize_t _TIFFReadEncodedStripAndAllocBuffer(TIFF *tif, uint32_t strip,
     }
     _TIFFmemset(*buf, 0, bufsizetoalloc);
 
-    if ((*tif->tif_decodestrip)(tif, *buf, this_stripsize, plane) <= 0)
+    if ((*tif->tif_decodestrip)(tif, (uint8_t *)*buf, this_stripsize, plane) <= 0)
         return ((tmsize_t)(-1));
-    (*tif->tif_postdecode)(tif, *buf, this_stripsize);
+    (*tif->tif_postdecode)(tif, (uint8_t *)*buf, this_stripsize);
     return (this_stripsize);
 }
 
@@ -969,9 +976,9 @@ tmsize_t TIFFReadEncodedTile(TIFF *tif, uint32_t tile, void *buf, tmsize_t size)
 
         if (!isFillOrder(tif, td->td_fillorder) &&
             (tif->tif_flags & TIFF_NOBITREV) == 0)
-            TIFFReverseBits(buf, tilesize);
+            TIFFReverseBits((uint8_t *)buf, tilesize);
 
-        (*tif->tif_postdecode)(tif, buf, tilesize);
+        (*tif->tif_postdecode)(tif, (uint8_t *)buf, tilesize);
         return (tilesize);
     }
 
@@ -1561,14 +1568,14 @@ int TIFFReadFromUserBuffer(TIFF *tif, uint32_t strile, void *inbuf,
     tif->tif_flags &= ~TIFF_MYBUFFER;
     tif->tif_flags |= TIFF_BUFFERMMAP;
     tif->tif_rawdatasize = insize;
-    tif->tif_rawdata = inbuf;
+    tif->tif_rawdata = (uint8_t *)inbuf;
     tif->tif_rawdataoff = 0;
     tif->tif_rawdataloaded = insize;
 
     if (!isFillOrder(tif, td->td_fillorder) &&
         (tif->tif_flags & TIFF_NOBITREV) == 0)
     {
-        TIFFReverseBits(inbuf, insize);
+        TIFFReverseBits((uint8_t *)inbuf, insize);
     }
 
     if (TIFFIsTiled(tif))
@@ -1625,13 +1632,13 @@ int TIFFReadFromUserBuffer(TIFF *tif, uint32_t strile, void *inbuf,
     if (!isFillOrder(tif, td->td_fillorder) &&
         (tif->tif_flags & TIFF_NOBITREV) == 0)
     {
-        TIFFReverseBits(inbuf, insize);
+        TIFFReverseBits((uint8_t *)inbuf, insize);
     }
 
     tif->tif_flags = (old_tif_flags & (TIFF_MYBUFFER | TIFF_BUFFERMMAP)) |
                      (tif->tif_flags & ~(TIFF_MYBUFFER | TIFF_BUFFERMMAP));
     tif->tif_rawdatasize = old_rawdatasize;
-    tif->tif_rawdata = old_rawdata;
+    tif->tif_rawdata = (uint8_t *)old_rawdata;
     tif->tif_rawdataoff = 0;
     tif->tif_rawdataloaded = 0;
 

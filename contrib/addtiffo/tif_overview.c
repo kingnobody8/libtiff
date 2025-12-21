@@ -67,8 +67,17 @@
 
 #define TIFF_DIR_MAX 65534
 
-void TIFFBuildOverviews(TIFF *, int, int *, int, const char *,
-                        int (*)(double, void *), void *);
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    void TIFFBuildOverviews(TIFF *, int, int *, int, const char *,
+                            int (*)(double, void *), void *);
+
+#ifdef __cplusplus
+}
+#endif
 
 /************************************************************************/
 /*                         TIFF_WriteOverview()                         */
@@ -165,7 +174,7 @@ uint32_t TIFF_WriteOverview(TIFF *hTIFF, uint32_t nXSize, uint32_t nYSize,
 
     TIFFSetSubDirectory(hTIFF, nBaseDirOffset);
 
-    return nOffset;
+    return (uint32_t)nOffset;
 }
 
 /************************************************************************/
@@ -525,7 +534,7 @@ static void TIFF_DownSample_Subsampled(
                       (nDestY % nVerSubsampling) * nHorSubsampling +
                       (nDestX / nHorSubsampling) * nSampleBlockSize +
                       (nDestX % nHorSubsampling)) =
-                        ((nCummulator + (nCummulatorCount >> 1)) /
+                        (unsigned char)((nCummulator + (nCummulatorCount >> 1)) /
                          nCummulatorCount);
                 }
             }
@@ -572,7 +581,7 @@ static void TIFF_DownSample_Subsampled(
                                        (nSourceYSecEnd - nSourceY);
                     *(pabyOTile + nDestY * nDestSampleRowSize +
                       nDestX * nSampleBlockSize + nSampleOffsetInSampleBlock) =
-                        ((nCummulator + (nCummulatorCount >> 1)) /
+                        (unsigned char)((nCummulator + (nCummulatorCount >> 1)) /
                          nCummulatorCount);
                 }
             }
@@ -617,6 +626,8 @@ void TIFF_ProcessFullResBlock(TIFF *hTIFF, int nPlanarConfig, int bSubsampled,
             }
             else
             {
+                /* Silence Coverity Scan warning about checking return. */
+                /* coverity[check_return:SUPPRESS] */
                 TIFFReadEncodedStrip(
                     hTIFF, TIFFComputeStrip(hTIFF, nSYOff, (tsample_t)iSample),
                     pabySrcTile, TIFFStripSize(hTIFF));

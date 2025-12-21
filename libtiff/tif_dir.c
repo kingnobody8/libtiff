@@ -121,7 +121,7 @@ static void setDoubleArrayOneValue(TIFF *tif, double **vpp, double value,
 {
     if (*vpp)
         _TIFFfreeExt(tif, *vpp);
-    *vpp = _TIFFmallocExt(tif, nmemb * sizeof(double));
+    *vpp = (double *)_TIFFmallocExt(tif, nmemb * sizeof(double));
     if (*vpp)
     {
         while (nmemb--)
@@ -1621,6 +1621,7 @@ void TIFFFreeDirectory(TIFF *tif)
     TIFFDirectory *td = &tif->tif_dir;
     int i;
 
+    (*tif->tif_cleanup)(tif);
     _TIFFmemset(td->td_fieldsset, 0, sizeof(td->td_fieldsset));
     CleanupField(td_sminsamplevalue);
     CleanupField(td_smaxsamplevalue);
@@ -1750,7 +1751,7 @@ int TIFFCreateGPSDirectory(TIFF *tif)
  */
 int TIFFDefaultDirectory(TIFF *tif)
 {
-    register TIFFDirectory *td = &tif->tif_dir;
+    TIFFDirectory *td = &tif->tif_dir;
     const TIFFFieldArray *tiffFieldArray;
 
     tiffFieldArray = _TIFFGetFields();
@@ -2336,12 +2337,12 @@ int TIFFUnlinkDirectory(TIFF *tif, tdir_t dirn)
      * means that the caller can only append to the directory
      * chain.
      */
-    (*tif->tif_cleanup)(tif);
     if ((tif->tif_flags & TIFF_MYBUFFER) && tif->tif_rawdata)
     {
         _TIFFfreeExt(tif, tif->tif_rawdata);
         tif->tif_rawdata = NULL;
         tif->tif_rawcc = 0;
+        tif->tif_rawcp = NULL;
         tif->tif_rawdataoff = 0;
         tif->tif_rawdataloaded = 0;
     }

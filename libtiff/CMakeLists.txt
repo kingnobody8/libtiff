@@ -49,7 +49,7 @@ set(tiff_private_HEADERS
         ${CMAKE_CURRENT_BINARY_DIR}/tif_config.h)
 
 
-add_library(tiff libtiff.def)
+add_library(tiff ${TIFF_BUILD_LIB_VALUE} libtiff.def)
 add_library(TIFF::tiff ALIAS tiff)
 
 target_sources(tiff PRIVATE
@@ -115,6 +115,9 @@ else()
   set_property(SOURCE tif_unix.c APPEND PROPERTY COMPILE_DEFINITIONS ALLOW_TIFF_NON_EXT_ALLOC_FUNCTIONS)
 endif()
 
+# Apply C++ compatibility mode if enabled
+tiff_target_compile_as_cxx(tiff)
+
 target_include_directories(tiff
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -150,9 +153,7 @@ endif()
 if(JPEG_SUPPORT)
   target_link_libraries(tiff PRIVATE JPEG::JPEG)
   string(APPEND tiff_requires_private " libjpeg")
-  if(HAVE_JPEGTURBO_DUAL_MODE_8_12)
-    target_compile_definitions(tiff PRIVATE HAVE_JPEGTURBO_DUAL_MODE_8_12)
-  elseif(JPEG_DUAL_MODE_8_12)
+  if(JPEG_DUAL_MODE_8_12 AND NOT HAVE_JPEGTURBO_DUAL_MODE_8_12)
     target_include_directories(tiff PRIVATE ${JPEG12_INCLUDE_DIR})
     target_link_libraries(tiff PRIVATE ${JPEG12_LIBRARIES})
   endif()
@@ -164,9 +165,6 @@ endif()
 if(LERC_SUPPORT)
   target_link_libraries(tiff PRIVATE LERC::LERC)
   if(LERC_VERSION_STRING VERSION_GREATER_EQUAL "4.0")
-    if(NOT BUILD_SHARED_LIBS)
-      set_target_properties(tiff PROPERTIES COMPILE_DEFINITIONS LERC_STATIC)
-    endif()
     string(APPEND tiff_requires_private " Lerc")
   else()
     list(APPEND tiff_libs_private_list "${LERC_LIBRARY}")
@@ -185,19 +183,26 @@ if(WEBP_SUPPORT)
   string(APPEND tiff_requires_private " libwebp")
 endif()
 if(CMath_LIBRARY)
-  target_link_libraries(tiff PRIVATE CMath::CMath)
-  list(APPEND tiff_libs_private_list "${CMath_LIBRARY}")
+  target_link_libraries(tiff PRIVATE ${CMath_LIBRARIES})
+  list(APPEND tiff_libs_private_list "${CMath_LIBRARIES}")
 endif()
 
 set(tiff_libs_private_list "${tiff_libs_private_list}" PARENT_SCOPE)
 set(tiff_requires_private "${tiff_requires_private}" PARENT_SCOPE)
 
 set_target_properties(tiff PROPERTIES SOVERSION ${SO_COMPATVERSION})
+if(MINGW)
+  # This causes "-${SOVERSION}" to be added to shared libraries, so it matches
+  # Autotools output as well.  This setting is already enabled on Cygwin/MSYS
+  # by default.  We don't enable it for other Windows builds, as there is no
+  # Autotools output to match there.
+  set(CMAKE_SHARED_LIBRARY_NAME_WITH_VERSION 1)
+endif()
 if(NOT CYGWIN)
     # This property causes shared libraries on Linux to have the full version
     # encoded into their final filename.  We disable this on Cygwin because
-    # it causes cygz-${TIFF_FULL_VERSION}.dll to be created when cygz.dll
-    # seems to be the default.
+    # it causes cygtiff-${TIFF_FULL_VERSION}.dll to be created when
+    # cygtiff-${SOVERSION}.dll seems to be the default.
     set_target_properties(tiff PROPERTIES VERSION ${SO_VERSION})
 endif()
 if(HAVE_LD_VERSION_SCRIPT)
@@ -241,21 +246,21 @@ if(tiff-install)
 
   set(TIFF_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/tiff)
   install(EXPORT TiffTargets
-          FILE TiffTargets.cmake
+          FILE tiff-targets.cmake
           NAMESPACE TIFF::
           DESTINATION ${TIFF_CONFIGDIR}
   )
 
   include(CMakePackageConfigHelpers)
   write_basic_package_version_file(
-    TiffConfigVersion.cmake
+    tiff-config-version.cmake
     VERSION ${LIBTIFF_VERSION}
     COMPATIBILITY SameMajorVersion)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/TiffConfigVersion.cmake DESTINATION ${TIFF_CONFIGDIR})
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiff-config-version.cmake DESTINATION ${TIFF_CONFIGDIR})
 
-  configure_file(${PROJECT_SOURCE_DIR}/cmake/TiffConfig.cmake.in
-                 ${CMAKE_CURRENT_BINARY_DIR}/TiffConfig.cmake @ONLY)
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/TiffConfig.cmake DESTINATION ${TIFF_CONFIGDIR})
+  configure_file(${PROJECT_SOURCE_DIR}/cmake/tiff-config.cmake.in
+                 ${CMAKE_CURRENT_BINARY_DIR}/tiff-config.cmake @ONLY)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiff-config.cmake DESTINATION ${TIFF_CONFIGDIR})
 endif()
 
 if(CXX_SUPPORT)
@@ -266,7 +271,7 @@ if(CXX_SUPPORT)
   if (WIN32 AND NOT MINGW)
       add_library(tiffxx STATIC ../placeholder.h)
   else()
-      add_library(tiffxx ../placeholder.h)
+      add_library(tiffxx ${TIFF_BUILD_LIB_VALUE} ../placeholder.h)
   endif()
 
   add_library(TIFF::CXX ALIAS tiffxx)
@@ -279,8 +284,8 @@ if(CXX_SUPPORT)
   if(NOT CYGWIN)
     # This property causes shared libraries on Linux to have the full version
     # encoded into their final filename.  We disable this on Cygwin because
-    # it causes cygz-${TIFF_FULL_VERSION}.dll to be created when cygz.dll
-    # seems to be the default.
+    # it causes cygtiffxx-${TIFF_FULL_VERSION}.dll to be created when
+    # cygtiffxx-${SOVERSION}.dll seems to be the default.
     set_target_properties(tiffxx PROPERTIES VERSION ${SO_VERSION})
   endif()
   if(HAVE_LD_VERSION_SCRIPT)
@@ -289,7 +294,7 @@ if(CXX_SUPPORT)
   endif()
 
   if(tiff-install)
-    install(TARGETS tiffxx
+    install(TARGETS tiffxx EXPORT TiffTargets
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -297,18 +302,6 @@ if(CXX_SUPPORT)
     install(FILES ${tiffxx_HEADERS}
             DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
   endif()
-      
+
 endif()
 
-if(NOT CMAKE_CROSSCOMPILING)
-  add_executable(tiff_mkg3states ../placeholder.h)
-  target_sources(tiff_mkg3states PRIVATE mkg3states.c tif_fax3.h)
-  set_target_properties(tiff_mkg3states PROPERTIES LINKER_LANGUAGE CXX)
-  target_link_libraries(tiff_mkg3states tiff tiff_port)
-
-  add_custom_target(tiff_faxtable
-          DEPENDS tiff_mkg3states
-          COMMAND ${CMAKE_COMMAND} -E rm "tif_fax3sm.c"
-          COMMAND tiff_mkg3states -b -c const "tif_fax3sm.c"
-          WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-endif()

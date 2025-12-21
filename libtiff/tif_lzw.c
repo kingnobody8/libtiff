@@ -732,6 +732,7 @@ after_loop:
     if (occ > 0)
     {
         memset(op, 0, (size_t)occ);
+        sp->read_error = 1;
         TIFFErrorExtR(tif, module,
                       "Not enough data at scanline %" PRIu32 " (short %" PRIu64
                       " bytes)",
@@ -1115,10 +1116,10 @@ static int LZWPreEncode(TIFF *tif, uint16_t s)
  */
 static int LZWEncode(TIFF *tif, uint8_t *bp, tmsize_t cc, uint16_t s)
 {
-    register LZWCodecState *sp = LZWEncoderState(tif);
-    register long fcode;
-    register hash_t *hp;
-    register int h, c;
+    LZWCodecState *sp = LZWEncoderState(tif);
+    long fcode;
+    hash_t *hp;
+    int h, c;
     hcode_t ent;
     long disp;
     tmsize_t incount, outcount, checkpoint;
@@ -1300,7 +1301,7 @@ static int LZWEncode(TIFF *tif, uint8_t *bp, tmsize_t cc, uint16_t s)
  */
 static int LZWPostEncode(TIFF *tif)
 {
-    register LZWCodecState *sp = LZWEncoderState(tif);
+    LZWCodecState *sp = LZWEncoderState(tif);
     uint8_t *op = tif->tif_rawcp;
     long nextbits = sp->lzw_nextbits;
     WordType nextdata = sp->lzw_nextdata;
@@ -1356,8 +1357,8 @@ static int LZWPostEncode(TIFF *tif)
  */
 static void cl_hash(LZWCodecState *sp)
 {
-    register hash_t *hp = &sp->enc_hashtab[HSIZE - 1];
-    register long i = HSIZE - 8;
+    hash_t *hp = &sp->enc_hashtab[HSIZE - 1];
+    long i = HSIZE - 8;
 
     do
     {
