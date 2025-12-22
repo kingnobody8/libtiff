@@ -163,9 +163,10 @@ install(TARGETS fax2ps
                 tiffmedian
                 tiffset
                 tiffsplit
-        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-if(OPENGL_SUPPORT)
+if(OPENGL_SUPPORT) 
   add_executable(tiffgt ../placeholder.h)
   target_sources(tiffgt PRIVATE tiffgt.c)
   set_target_properties(tiffgt PROPERTIES LINKER_LANGUAGE CXX)
