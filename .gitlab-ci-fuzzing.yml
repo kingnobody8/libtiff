@@ -1,0 +1,96 @@
+# GitLab CI configuration for fuzzer regression testing
+# This runs the fuzzers against the seed corpus to catch regressions
+
+stages:
+  - build
+  - fuzz-test
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+# Build fuzzers with sanitizers
+build-fuzzers:
+  stage: build
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update
+    - apt-get install -y build-essential cmake clang libjpeg-dev zlib1g-dev
+      liblzma-dev libjbig-dev libzstd-dev libwebp-dev libdeflate-dev liblerc-dev
+  script:
+    - mkdir build-fuzz && cd build-fuzz
+    - cmake ..
+        -DCMAKE_C_COMPILER=clang
+        -DCMAKE_CXX_COMPILER=clang++
+        -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+        -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+        -DBUILD_FUZZERS=ON
+        -DFUZZER_STANDALONE=ON
+    - make -j$(nproc)
+  artifacts:
+    paths:
+      - build-fuzz/contrib/oss-fuzz/
+      - contrib/oss-fuzz/corpus/
+      - test/images/
+    expire_in: 1 day
+
+# Run fuzzers against corpus
+fuzz-regression:
+  stage: fuzz-test
+  image: ubuntu:22.04
+  needs: [build-fuzzers]
+  before_script:
+    - apt-get update
+    - apt-get install -y libjpeg62 zlib1g liblzma5 libjbig0 libzstd1 libwebp7
+      libdeflate0 liblerc4
+  script:
+    - cd build-fuzz/contrib/oss-fuzz
+    - |
+      FUZZERS="tiff_read_rgba_fuzzer tiff_read_strip_fuzzer tiff_read_dir_fuzzer
+               tiff_print_dir_fuzzer tiff_color_fuzzer tiff_write_read_fuzzer
+               tiff_codec_fuzzer tiff_bigtiff_fuzzer tiff_multipage_fuzzer
+               tiff_custom_tag_fuzzer"
+
+      FAILED=0
+      for fuzzer in $FUZZERS; do
+        echo "=== Testing $fuzzer ==="
+        if [ -f "./$fuzzer" ]; then
+          # Test with corpus files
+          for corpus_file in ../../../contrib/oss-fuzz/corpus/*.tiff ../../../test/images/*.tiff; do
+            if [ -f "$corpus_file" ]; then
+              timeout 10 ./$fuzzer "$corpus_file" || {
+                echo "FAIL: $fuzzer crashed on $corpus_file"
+                FAILED=1
+              }
+            fi
+          done
+          echo "PASS: $fuzzer completed corpus test"
+        else
+          echo "SKIP: $fuzzer not found"
+        fi
+      done
+
+      exit $FAILED
+  allow_failure: false
+
+# Optional: Run fuzzers for extended time (manual trigger)
+fuzz-extended:
+  stage: fuzz-test
+  image: ubuntu:22.04
+  needs: [build-fuzzers]
+  when: manual
+  before_script:
+    - apt-get update
+    - apt-get install -y clang libjpeg-dev zlib1g-dev liblzma-dev libjbig-dev
+      libzstd-dev libwebp-dev libdeflate-dev liblerc-dev
+  script:
+    - cd build-fuzz/contrib/oss-fuzz
+    - |
+      # Rebuild with libFuzzer (not standalone)
+      cd ../..
+      cmake .. -DFUZZER_STANDALONE=OFF
+      make -j$(nproc) tiff_read_rgba_fuzzer
+
+      # Run for 5 minutes
+      cd contrib/oss-fuzz
+      ./tiff_read_rgba_fuzzer -max_total_time=300 ../../../contrib/oss-fuzz/corpus/ || true
+  timeout: 10 minutes
