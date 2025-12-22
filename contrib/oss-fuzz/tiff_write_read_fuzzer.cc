@@ -55,6 +55,8 @@ static tmsize_t memWrite(thandle_t h, void *buf, tmsize_t size)
         uint8_t *newData = static_cast<uint8_t *>(realloc(mem->data, newAlloc));
         if (!newData)
         {
+            // Note: mem->data remains valid and will be freed in cleanup.
+            // Do NOT set mem->data = NULL here as that would leak memory.
             return 0;
         }
         mem->data = newData;
