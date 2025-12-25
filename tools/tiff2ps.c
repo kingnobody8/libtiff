@@ -783,7 +783,7 @@ static tsize_t tf_bytesperrow;
 static tsize_t ps_bytesperrow;
 static uint32_t tf_rowsperstrip;
 static uint32_t tf_numberstrips;
-static char *hex = "0123456789abcdef";
+static const char *hex = "0123456789abcdef";
 
 /*
  * Pagewidth and pageheight are the output size in points,
@@ -2710,7 +2710,7 @@ static int PS_Lvl2page(FILE *fd, TIFF *tif, uint32_t w, uint32_t h)
 
 void PSpage(FILE *fd, TIFF *tif, uint32_t w, uint32_t h)
 {
-    char *imageOp = "image";
+    const char *imageOp = "image";
 
     if (useImagemask && (bitspersample == 1))
         imageOp = "imagemask";

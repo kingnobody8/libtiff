@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 #define ord(e) ((int)e)
 
 static uint64_t ReadDirectory(int, unsigned, uint64_t);
-static void ReadError(char *);
+static void ReadError(const char *);
 static void Error(const char *, ...);
 static void Fatal(const char *, ...);
 
@@ -722,7 +722,7 @@ static void PrintASCII(FILE *fd, uint32_t cc, const unsigned char *cp)
 static void PrintData(FILE *fd, uint16_t type, uint32_t count,
                       unsigned char *data)
 {
-    char *sep = "";
+    const char *sep = "";
 
     switch (type)
     {
@@ -885,7 +885,10 @@ static void PrintData(FILE *fd, uint16_t type, uint32_t count,
     }
 }
 
-static void ReadError(char *what) { Fatal("Error while reading %s", what); }
+static void ReadError(const char *what)
+{
+    Fatal("Error while reading %s", what);
+}
 
 #include <stdarg.h>
 

@@ -92,7 +92,7 @@ const char *logFilename = "test_RGBAImage_log.txt";
 const char *logFilename = NULL;
 #endif
 bool blnMultipleLogFiles = FALSE;
-char *arrLogFilenames[] = {
+const char *arrLogFilenames[] = {
     "test_RGBAImage_log_1.txt", "test_RGBAImage_log_2.txt",
     "test_RGBAImage_log_3.txt", "test_RGBAImage_log_4.txt"};
 FILE *fpLog = NULL;
@@ -437,7 +437,7 @@ failure:
 
 /* Check some contents of the raster buffer. Ensure they are correctly filled.
  */
-static int checkRasterContents(char *txt, TIFFRGBAImage *img, uint32_t *raster,
+static int checkRasterContents(const char *txt, TIFFRGBAImage *img, uint32_t *raster,
                                uint32_t rw, uint32_t rh, uint16_t orientation)
 {
     /* For this test, the image pixel samples are set for R= row, G= column, B=
@@ -663,7 +663,7 @@ failure:
 } /*-- checkRasterContents() --*/
 
 /* Prints the raster buffer 2D matrix as hex to display and/or to file. */
-static void printRaster(char *txt, TIFFRGBAImage *img, uint32_t *raster,
+static void printRaster(const char *txt, TIFFRGBAImage *img, uint32_t *raster,
                         uint32_t rw, uint32_t rh, uint16_t orientation,
                         bool tiled)
 {

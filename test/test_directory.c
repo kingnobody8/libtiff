@@ -59,9 +59,9 @@ const uint16_t photometric = PHOTOMETRIC_RGB;
 const uint16_t rows_per_strip = 1;
 const uint16_t planarconfig = PLANARCONFIG_CONTIG;
 
-char *openModeStrings[] = {"wl", "wb", "w8l", "w8b"};
-char *openModeText[] = {"non-BigTIFF and LE", "non-BigTIFF and BE",
-                        "BigTIFF and LE", "BigTIFF and BE"};
+const char *openModeStrings[] = {"wl", "wb", "w8l", "w8b"};
+const char *openModeText[] = {"non-BigTIFF and LE", "non-BigTIFF and BE",
+                              "BigTIFF and LE", "BigTIFF and BE"};
 
 /* Some functions and macros to get more readable test code. */
 static int CheckCurDirNum(TIFF *tif, tdir_t expected_dirnum, int line)

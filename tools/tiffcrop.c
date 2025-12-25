@@ -674,12 +674,12 @@ static int combineSeparateTileSamplesBytes(unsigned char *[], unsigned char *,
                                            FILE *, int, int);
 
 /* Dump functions for debugging */
-static void dump_info(FILE *, int, char *, char *, ...);
-static int dump_data(FILE *, int, char *, unsigned char *, uint32_t);
-static int dump_byte(FILE *, int, char *, unsigned char);
-static int dump_short(FILE *, int, char *, uint16_t);
-static int dump_long(FILE *, int, char *, uint32_t);
-static int dump_wide(FILE *, int, char *, uint64_t);
+static void dump_info(FILE *, int, const char *, const char *, ...);
+static int dump_data(FILE *, int, const char *, unsigned char *, uint32_t);
+static int dump_byte(FILE *, int, const char *, unsigned char);
+static int dump_short(FILE *, int, const char *, uint16_t);
+static int dump_long(FILE *, int, const char *, uint32_t);
+static int dump_wide(FILE *, int, const char *, uint64_t);
 static int dump_buffer(FILE *, int, uint32_t, uint32_t, uint32_t,
                        unsigned char *);
 
@@ -2994,7 +2994,7 @@ failure:
 } /* end main */
 
 /* Debugging functions */
-static int dump_data(FILE *dumpfile, int format, char *dump_tag,
+static int dump_data(FILE *dumpfile, int format, const char *dump_tag,
                      unsigned char *data, uint32_t count)
 {
     int j, k;
@@ -3035,7 +3035,7 @@ static int dump_data(FILE *dumpfile, int format, char *dump_tag,
     return (0);
 }
 
-static int dump_byte(FILE *dumpfile, int format, char *dump_tag,
+static int dump_byte(FILE *dumpfile, int format, const char *dump_tag,
                      unsigned char data)
 {
     int j, k;
@@ -3071,7 +3071,8 @@ static int dump_byte(FILE *dumpfile, int format, char *dump_tag,
     return (0);
 }
 
-static int dump_short(FILE *dumpfile, int format, char *dump_tag, uint16_t data)
+static int dump_short(FILE *dumpfile, int format, const char *dump_tag,
+                      uint16_t data)
 {
     int j, k;
     char dump_array[20];
@@ -3108,7 +3109,8 @@ static int dump_short(FILE *dumpfile, int format, char *dump_tag, uint16_t data)
     return (0);
 }
 
-static int dump_long(FILE *dumpfile, int format, char *dump_tag, uint32_t data)
+static int dump_long(FILE *dumpfile, int format, const char *dump_tag,
+                     uint32_t data)
 {
     int j, k;
     char dump_array[40];
@@ -3144,7 +3146,8 @@ static int dump_long(FILE *dumpfile, int format, char *dump_tag, uint32_t data)
     return (0);
 }
 
-static int dump_wide(FILE *dumpfile, int format, char *dump_tag, uint64_t data)
+static int dump_wide(FILE *dumpfile, int format, const char *dump_tag,
+                     uint64_t data)
 {
     int j, k;
     char dump_array[80];
@@ -3181,7 +3184,8 @@ static int dump_wide(FILE *dumpfile, int format, char *dump_tag, uint64_t data)
     return (0);
 }
 
-static void dump_info(FILE *dumpfile, int format, char *prefix, char *msg, ...)
+static void dump_info(FILE *dumpfile, int format, const char *prefix,
+                      const char *msg, ...)
 {
     if (format == DUMP_TEXT)
     {
