@@ -21,7 +21,7 @@
 # LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 # OF THIS SOFTWARE.
 
-# build zlib
+# Build zlib
 pushd "$SRC/zlib"
 ./configure --static --prefix="$WORK"
 make -j$(nproc) CFLAGS="$CFLAGS -fPIC"
@@ -50,30 +50,108 @@ mv "$SRC"/jbigkit/libjbig/*.a "$WORK/lib/"
 mv "$SRC"/jbigkit/libjbig/*.h "$WORK/include/"
 popd
 
-if [ "$ARCHITECTURE" != "i386" ]; then
-    apt-get install -y liblzma-dev
+# Build liblzma from source for MSan compatibility
+if [ "$SANITIZER" = "memory" ]; then
+    pushd "$SRC"
+    if [ ! -d "xz" ]; then
+        git clone --depth 1 https://github.com/tukaani-project/xz.git
+    fi
+    cd xz
+    mkdir -p build && cd build
+    cmake .. -DCMAKE_INSTALL_PREFIX=$WORK \
+        -DCMAKE_C_COMPILER="${CC}" \
+        -DCMAKE_C_FLAGS="${CFLAGS}" \
+        -DBUILD_SHARED_LIBS=OFF
+    make -j$(nproc)
+    make install
+    popd
+    LZMA_FLAGS="-DLIBLZMA_LIBRARY=$WORK/lib/liblzma.a -DLIBLZMA_INCLUDE_DIR=$WORK/include"
+else
+    if [ "$ARCHITECTURE" != "i386" ]; then
+        apt-get install -y liblzma-dev
+    fi
+    LZMA_FLAGS=""
 fi
 
-cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DBUILD_SHARED_LIBS=off
+# Build libtiff
+# Disable optional codecs that require uninstrumented libraries for MSan
+if [ "$SANITIZER" = "memory" ]; then
+    CMAKE_EXTRA_FLAGS="-Dzstd=OFF -Dwebp=OFF -Dlerc=OFF -Dlibdeflate=OFF ${LZMA_FLAGS}"
+else
+    CMAKE_EXTRA_FLAGS=""
+fi
+
+cmake . -DCMAKE_INSTALL_PREFIX=$WORK -DBUILD_SHARED_LIBS=off ${CMAKE_EXTRA_FLAGS}
 make -j$(nproc)
 make install
 
-if [ "$ARCHITECTURE" = "i386" ]; then
+# List of fuzzers to build
+FUZZERS=(
+    "tiff_read_rgba_fuzzer"
+    "tiff_read_strip_fuzzer"
+    "tiff_read_dir_fuzzer"
+    "tiff_print_dir_fuzzer"
+    "tiff_color_fuzzer"
+    "tiff_write_read_fuzzer"
+    "tiff_codec_fuzzer"
+    "tiff_bigtiff_fuzzer"
+    "tiff_multipage_fuzzer"
+    "tiff_custom_tag_fuzzer"
+    "tiff_ojpeg_fuzzer"
+    "tiff_predictor_fuzzer"
+    "tiff_open_options_fuzzer"
+)
+
+# Build each fuzzer
+for fuzzer in "${FUZZERS[@]}"; do
+    # Base libraries (all built from source for MSan compatibility)
+    FUZZER_LIBS="$WORK/lib/libtiffxx.a $WORK/lib/libtiff.a $WORK/lib/libz.a $WORK/lib/libjpeg.a $WORK/lib/libjbig.a $WORK/lib/libjbig85.a"
+
+    if [ "$SANITIZER" = "memory" ]; then
+        # MSan build - only use libraries built from source
+        FUZZER_LIBS="$FUZZER_LIBS $WORK/lib/liblzma.a"
+        EXTRA_LINK=""
+    elif [ "$ARCHITECTURE" = "i386" ]; then
+        EXTRA_LINK=""
+    else
+        EXTRA_LINK="-Wl,-Bstatic -llzma -Wl,-Bdynamic"
+    fi
+
     $CXX $CXXFLAGS -std=c++11 -I$WORK/include \
-        $SRC/libtiff/contrib/oss-fuzz/tiff_read_rgba_fuzzer.cc -o $OUT/tiff_read_rgba_fuzzer \
-        $LIB_FUZZING_ENGINE $WORK/lib/libtiffxx.a $WORK/lib/libtiff.a $WORK/lib/libz.a $WORK/lib/libjpeg.a \
-        $WORK/lib/libjbig.a $WORK/lib/libjbig85.a
-else
-    $CXX $CXXFLAGS -std=c++11 -I$WORK/include \
-        $SRC/libtiff/contrib/oss-fuzz/tiff_read_rgba_fuzzer.cc -o $OUT/tiff_read_rgba_fuzzer \
-        $LIB_FUZZING_ENGINE $WORK/lib/libtiffxx.a $WORK/lib/libtiff.a $WORK/lib/libz.a $WORK/lib/libjpeg.a \
-        $WORK/lib/libjbig.a $WORK/lib/libjbig85.a -Wl,-Bstatic -llzma -Wl,-Bdynamic
+        $SRC/libtiff/contrib/oss-fuzz/${fuzzer}.cc -o $OUT/${fuzzer} \
+        $LIB_FUZZING_ENGINE $FUZZER_LIBS $EXTRA_LINK
+
+    # Copy dictionary for each fuzzer
+    cp "$SRC/libtiff/contrib/oss-fuzz/tiff.dict" "$OUT/${fuzzer}.dict"
+
+    # Copy options file if it exists
+    if [ -f "$SRC/libtiff/contrib/oss-fuzz/${fuzzer}.options" ]; then
+        cp "$SRC/libtiff/contrib/oss-fuzz/${fuzzer}.options" "$OUT/"
+    fi
+done
+
+# Build seed corpus from test images and AFL testcases
+mkdir -p afl_testcases
+(cd afl_testcases; tar xf "$SRC/afl_testcases.tgz" 2>/dev/null || true)
+mkdir -p tif_corpus
+find afl_testcases -type f -name '*.tif' -exec mv -n {} tif_corpus/ \; 2>/dev/null || true
+
+# Add libtiff test images to corpus
+if [ -d "$SRC/libtiff/contrib/oss-fuzz/corpus" ]; then
+    cp "$SRC/libtiff/contrib/oss-fuzz/corpus"/*.tiff tif_corpus/ 2>/dev/null || true
 fi
 
-mkdir afl_testcases
-(cd afl_testcases; tar xf "$SRC/afl_testcases.tgz")
-mkdir tif
-find afl_testcases -type f -name '*.tif' -exec mv -n {} tif/ \;
-zip -rj tif.zip tif/
-cp tif.zip "$OUT/tiff_read_rgba_fuzzer_seed_corpus.zip"
-cp "$SRC/tiff.dict" "$OUT/tiff_read_rgba_fuzzer.dict"
+# Also include test images from the source tree
+if [ -d "$SRC/libtiff/test/images" ]; then
+    cp "$SRC/libtiff/test/images"/*.tiff tif_corpus/ 2>/dev/null || true
+fi
+
+# Create corpus zip
+zip -rj tif_corpus.zip tif_corpus/
+
+# Copy corpus for each fuzzer
+for fuzzer in "${FUZZERS[@]}"; do
+    cp tif_corpus.zip "$OUT/${fuzzer}_seed_corpus.zip"
+done
+
+echo "Build complete! Built ${#FUZZERS[@]} fuzzers."
