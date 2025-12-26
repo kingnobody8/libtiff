@@ -143,42 +143,37 @@ if(NOT CMAKE_CROSSCOMPILING)
           WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 endif()
 
-if(tiff-framework)
-  set_target_properties(fax2ps PROPERTIES
-    FRAMEWORK TRUE
-    FRAMEWORK_VERSION "${LIBTIFF_VERSION_FULL}"
-    PRODUCT_BUNDLE_IDENTIFIER "gitlab.com/libtiff/libtiff"
-    PUBLIC_HEADER "${tiff_public_HEADERS}"
-    XCODE_ATTRIBUTE_INSTALL_PATH "@rpath"
-    XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY ""
-    XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
-    XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO"
-    MACOSX_FRAMEWORK_IDENTIFIER "gitlab.com/libtiff/fax2ps"
-    MACOSX_FRAMEWORK_BUNDLE_VERSION "${LIBTIFF_VERSION_FULL}"
-    MACOSX_FRAMEWORK_SHORT_VERSION_STRING "${LIBTIFF_RELEASE_VERSION}"
-    MACOSX_RPATH TRUE)
-endif()
-
 # rgb2ycbcr and thumbnail are intended to *NOT* be installed. They are for
 # testing purposes only.
-install(TARGETS fax2ps
-                fax2tiff
-                pal2rgb
-                ppm2tiff
-                raw2tiff
-                tiff2bw
-                tiff2pdf
-                tiff2ps
-                tiff2rgba
-                tiffcmp
-                tiffcp
-                tiffcrop
-                tiffdither
-                tiffdump
-                tiffinfo
-                tiffmedian
-                tiffset
-                tiffsplit
+set(libtiff_tools
+    fax2ps
+    fax2tiff
+    pal2rgb
+    ppm2tiff
+    raw2tiff
+    tiff2bw
+    tiff2pdf
+    tiff2ps
+    tiff2rgba
+    tiffcmp
+    tiffcp
+    tiffcrop
+    tiffdither
+    tiffdump
+    tiffinfo
+    tiffmedian
+    tiffset
+    tiffsplit
+)
+
+# Link all executables against the framework/library
+if(tiff-framework)
+  foreach(exec IN LISTS libtiff_install_tools)
+    link_with_tiff(${exec})
+  endforeach()
+endif()
+
+install(TARGETS ${libtiff_tools}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR})
 
