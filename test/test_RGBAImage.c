@@ -1169,7 +1169,7 @@ int main(void)
         {
             if (blnMultipleLogFiles)
             {
-                unsigned int n = (unsigned int)tiled * 2 + (planarconfig - 1);
+                unsigned int n = (unsigned int)tiled * 2U + (unsigned int)(planarconfig - 1);
                 assert(n <
                        (sizeof(arrLogFilenames) / sizeof(arrLogFilenames[0])));
                 logFilename = arrLogFilenames[n];

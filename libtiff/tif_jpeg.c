@@ -919,7 +919,7 @@ JPEGFixupTagsSubsamplingSec(struct JPEGFixupTagsSubsamplingData *data)
                         return (0);
                     if (n < 2)
                         return (0);
-                    n -= 2;
+                    n = (uint16_t)(n - 2);
                     if (n > 0)
                         JPEGFixupTagsSubsamplingSkip(data, n);
                 }
@@ -2083,14 +2083,14 @@ static int JPEGSetupEncode(TIFF *tif)
 #endif
     if (isTiled(tif))
     {
-        if ((td->td_tilelength % (sp->v_sampling * DCTSIZE)) != 0)
+        if ((td->td_tilelength % (uint32_t)(sp->v_sampling * DCTSIZE)) != 0)
         {
             TIFFErrorExtR(tif, module,
                           "JPEG tile height must be multiple of %" PRIu32,
                           (uint32_t)(sp->v_sampling * DCTSIZE));
             return (0);
         }
-        if ((td->td_tilewidth % (sp->h_sampling * DCTSIZE)) != 0)
+        if ((td->td_tilewidth % (uint32_t)(sp->h_sampling * DCTSIZE)) != 0)
         {
             TIFFErrorExtR(tif, module,
                           "JPEG tile width must be multiple of %" PRIu32,
@@ -2101,7 +2101,7 @@ static int JPEGSetupEncode(TIFF *tif)
     else
     {
         if (td->td_rowsperstrip < td->td_imagelength &&
-            (td->td_rowsperstrip % (sp->v_sampling * DCTSIZE)) != 0)
+            (td->td_rowsperstrip % (uint32_t)(sp->v_sampling * DCTSIZE)) != 0)
         {
             TIFFErrorExtR(tif, module,
                           "RowsPerStrip must be multiple of %" PRIu32

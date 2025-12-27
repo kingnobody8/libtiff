@@ -199,7 +199,7 @@ static int cvt_by_tile(TIFF *in, TIFF *out)
     /*
      * Allocate tile buffer
      */
-    rastersize = tile_width * tile_height * sizeof(uint32_t);
+    rastersize = (uint32_t)((size_t)tile_width * (size_t)tile_height * sizeof(uint32_t));
     if (tile_width != (rastersize / tile_height) / sizeof(uint32_t))
     {
         TIFFError(TIFFFileName(in),
@@ -217,7 +217,7 @@ static int cvt_by_tile(TIFF *in, TIFF *out)
      * Allocate a scanline buffer for swapping during the vertical
      * mirroring pass.
      */
-    wrk_linesize = tile_width * sizeof(uint32_t);
+    wrk_linesize = (uint32_t)((size_t)tile_width * sizeof(uint32_t));
     if (tile_width != wrk_linesize / sizeof(uint32_t))
     {
         TIFFError(TIFFFileName(in),
@@ -315,7 +315,7 @@ static int cvt_by_strip(TIFF *in, TIFF *out)
     /*
      * Allocate strip buffer
      */
-    rastersize = width * rowsperstrip * sizeof(uint32_t);
+    rastersize = (uint32_t)((size_t)width * (size_t)rowsperstrip * sizeof(uint32_t));
     if (width != (rastersize / rowsperstrip) / sizeof(uint32_t))
     {
         TIFFError(TIFFFileName(in),
@@ -333,7 +333,7 @@ static int cvt_by_strip(TIFF *in, TIFF *out)
      * Allocate a scanline buffer for swapping during the vertical
      * mirroring pass.
      */
-    wrk_linesize = width * sizeof(uint32_t);
+    wrk_linesize = (uint32_t)((size_t)width * sizeof(uint32_t));
     if (width != wrk_linesize / sizeof(uint32_t))
     {
         TIFFError(TIFFFileName(in),

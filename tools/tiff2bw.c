@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
             if (checkcmap(in, 1 << bitspersample, red, green, blue) == 16)
             {
                 int i;
-#define CVT(x) (((x)*255L) / ((1L << 16) - 1))
+#define CVT(x) ((uint16_t)((((x)*255L) / ((1L << 16) - 1))))
                 for (i = (1 << bitspersample) - 1; i >= 0; i--)
                 {
                     red[i] = CVT(red[i]);

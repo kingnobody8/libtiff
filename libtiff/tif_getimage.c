@@ -1986,7 +1986,7 @@ DECLAREContigPutFunc(putRGBcontig8bitCMYKMaptile)
     {
         for (x = w; x > 0; --x)
         {
-            k = 255 - pp[3];
+            k = (uint16_t)(255 - pp[3]);
             r = (uint16_t)((k * (255 - pp[0])) / 255);
             g = (uint16_t)((k * (255 - pp[1])) / 255);
             b = (uint16_t)((k * (255 - pp[2])) / 255);
@@ -2049,10 +2049,10 @@ DECLARESepPutFunc(putCMYKseparate8bittile)
         uint32_t rv, gv, bv, kv;
         for (x = w; x > 0; --x)
         {
-            kv = 255 - *a++;
-            rv = (kv * (255 - *r++)) / 255;
-            gv = (kv * (255 - *g++)) / 255;
-            bv = (kv * (255 - *b++)) / 255;
+            kv = (uint32_t)(255 - *a++);
+            rv = (uint32_t)((kv * (uint32_t)(255 - *r++)) / 255);
+            gv = (uint32_t)((kv * (uint32_t)(255 - *g++)) / 255);
+            bv = (uint32_t)((kv * (uint32_t)(255 - *b++)) / 255);
             *cp++ = PACK4(rv, gv, bv, 255);
         }
         SKEW4(r, g, b, a, fromskew);
@@ -3568,13 +3568,13 @@ int TIFFReadRGBATileExt(TIFF *tif, uint32_t col, uint32_t row, uint32_t *raster,
                 read_xsize * sizeof(uint32_t));
         _TIFFmemset(raster + (size_t)(tile_ysize - i_row - 1) * tile_xsize +
                         read_xsize,
-                    0, sizeof(uint32_t) * (tile_xsize - read_xsize));
+                    0, (tmsize_t)((size_t)sizeof(uint32_t) * (tile_xsize - read_xsize)));
     }
 
     for (i_row = read_ysize; i_row < tile_ysize; i_row++)
     {
         _TIFFmemset(raster + (size_t)(tile_ysize - i_row - 1) * tile_xsize, 0,
-                    sizeof(uint32_t) * tile_xsize);
+                    (tmsize_t)((size_t)sizeof(uint32_t) * tile_xsize));
     }
 
     return (ok);

@@ -67,10 +67,10 @@
 #define MAX_COLOR 256
 
 #define B_DEPTH 5 /* # bits/pixel to use */
-#define B_LEN (1L << B_DEPTH)
+#define B_LEN (1 << B_DEPTH)
 
 #define C_DEPTH 2
-#define C_LEN (1L << C_DEPTH) /* # cells/color to use */
+#define C_LEN (1 << C_DEPTH) /* # cells/color to use */
 
 #define COLOR_SHIFT (COLOR_DEPTH - B_DEPTH)
 
@@ -322,7 +322,7 @@ int main(int argc, char *argv[])
         /*
          * Scale colormap to TIFF-required 16-bit values.
          */
-#define SCALE(x) (((x) * ((1L << 16) - 1)) / 255)
+#define SCALE(x) (uint16_t)((((x) * ((1L << 16) - 1)) / 255))
     for (i = 0; i < MAX_CMAP_SIZE; ++i)
     {
         rm[i] = SCALE(rm[i]);
@@ -928,8 +928,8 @@ static void quant_fsdither(TIFF *local_in, TIFF *local_out)
     imax = imagelength - 1;
     jmax = imagewidth - 1;
     inputline = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(local_in));
-    thisline = (short *)_TIFFmalloc(imagewidth * 3 * sizeof(short));
-    nextline = (short *)_TIFFmalloc(imagewidth * 3 * sizeof(short));
+    thisline = (short *)_TIFFmalloc((tmsize_t)((size_t)imagewidth * 3 * sizeof(short)));
+    nextline = (short *)_TIFFmalloc((tmsize_t)((size_t)imagewidth * 3 * sizeof(short)));
     outline = (unsigned char *)_TIFFmalloc(TIFFScanlineSize(local_out));
 
     GetInputLine(local_in, 0, goto bad); /* get first line */
@@ -989,26 +989,26 @@ static void quant_fsdither(TIFF *local_in, TIFF *local_out)
             blue -= bm[oval];
             if (!lastpixel)
             {
-                thisptr[0] += (short)(blue * 7 / 16);
-                thisptr[1] += (short)(green * 7 / 16);
-                thisptr[2] += (short)(red * 7 / 16);
+                thisptr[0] = (short)(thisptr[0] + (blue * 7 / 16));
+                thisptr[1] = (short)(thisptr[1] + (green * 7 / 16));
+                thisptr[2] = (short)(thisptr[2] + (red * 7 / 16));
             }
             if (!lastline)
             {
                 if (j != 0)
                 {
-                    nextptr[-3] += (short)(blue * 3 / 16);
-                    nextptr[-2] += (short)(green * 3 / 16);
-                    nextptr[-1] += (short)(red * 3 / 16);
+                    nextptr[-3] = (short)(nextptr[-3] + (blue * 3 / 16));
+                    nextptr[-2] = (short)(nextptr[-2] + (green * 3 / 16));
+                    nextptr[-1] = (short)(nextptr[-1] + (red * 3 / 16));
                 }
-                nextptr[0] += (short)(blue * 5 / 16);
-                nextptr[1] += (short)(green * 5 / 16);
-                nextptr[2] += (short)(red * 5 / 16);
+                nextptr[0] = (short)(nextptr[0] + (blue * 5 / 16));
+                nextptr[1] = (short)(nextptr[1] + (green * 5 / 16));
+                nextptr[2] = (short)(nextptr[2] + (red * 5 / 16));
                 if (!lastpixel)
                 {
-                    nextptr[3] += (short)(blue / 16);
-                    nextptr[4] += (short)(green / 16);
-                    nextptr[5] += (short)(red / 16);
+                    nextptr[3] = (short)(nextptr[3] + (blue / 16));
+                    nextptr[4] = (short)(nextptr[4] + (green / 16));
+                    nextptr[5] = (short)(nextptr[5] + (red / 16));
                 }
                 nextptr += 3;
             }

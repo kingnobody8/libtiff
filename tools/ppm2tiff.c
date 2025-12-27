@@ -106,7 +106,7 @@ static void pack_bytes(unsigned char *buf, unsigned int smpls, uint16_t bps)
     for (s = 0; smpls > s; s++)
     {
 
-        t <<= bps;
+        t = (uint16_t)(t << bps);
         t |= (uint16_t)buf[in++];
 
         bits += bps;
@@ -137,7 +137,7 @@ static void pack_words(unsigned char *buf, unsigned int smpls, uint16_t bps)
     for (s = 0; smpls > s; s++)
     {
 
-        t <<= bps;
+        t = (uint16_t)(t << bps);
         t |= (uint32_t)buf[in++] << 8;
         t |= (uint32_t)buf[in++] << 0;
 
