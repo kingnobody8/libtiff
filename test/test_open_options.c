@@ -95,10 +95,10 @@ static int test_error_handler(void)
     int ret = 0;
     char error_buffer[ERROR_STRING_SIZE] = {0};
     char warn_buffer[ERROR_STRING_SIZE] = {0};
-    MyErrorHandlerUserDataStruct errorhandler_user_data = {
-        .buffer = error_buffer, .buffer_size = ERROR_STRING_SIZE};
-    MyErrorHandlerUserDataStruct warnhandler_user_data = {
-        .buffer = warn_buffer, .buffer_size = ERROR_STRING_SIZE};
+    MyErrorHandlerUserDataStruct errorhandler_user_data = {.buffer_size = ERROR_STRING_SIZE};
+    errorhandler_user_data.buffer = error_buffer;
+    MyErrorHandlerUserDataStruct warnhandler_user_data = {.buffer_size = ERROR_STRING_SIZE};
+    warnhandler_user_data.buffer = warn_buffer;
 
     TIFFOpenOptions *opts = TIFFOpenOptionsAlloc();
     assert(opts);

@@ -33,9 +33,9 @@
  *     immediately after calling TIFFMergeFieldInfo().
  */
 
-#include <memory.h> /* necessary for linux compiler (memset) */
 #include <stdio.h>
 #include <stdlib.h> /* necessary for linux compiler */
+#include <string.h> /* memcpy, memset */
 
 #include "tif_config.h" /* necessary for linux compiler to get HAVE_UNISTD_H */
 #ifdef HAVE_UNISTD_H
