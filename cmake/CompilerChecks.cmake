@@ -111,6 +111,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR
                 -Wlogical-not-parentheses
                 -Wno-int-to-pointer-cast
                 -Wdangling-else
+                -Wunreachable-code
         )
     endif()
     if(broken-warnings)
@@ -121,8 +122,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR
                 -Wbool-operation
                 -Wunused-macros
                 -Wcast-qual
-                -Wcast-align
-                -Wunreachable-code)
+                -Wcast-align)
     endif()
     if(fatal-warnings)
         list(APPEND test_flags
