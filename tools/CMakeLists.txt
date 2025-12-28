@@ -145,25 +145,37 @@ endif()
 
 # rgb2ycbcr and thumbnail are intended to *NOT* be installed. They are for
 # testing purposes only.
-install(TARGETS fax2ps
-                fax2tiff
-                pal2rgb
-                ppm2tiff
-                raw2tiff
-                tiff2bw
-                tiff2pdf
-                tiff2ps
-                tiff2rgba
-                tiffcmp
-                tiffcp
-                tiffcrop
-                tiffdither
-                tiffdump
-                tiffinfo
-                tiffmedian
-                tiffset
-                tiffsplit
-        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+set(libtiff_tools
+    fax2ps
+    fax2tiff
+    pal2rgb
+    ppm2tiff
+    raw2tiff
+    tiff2bw
+    tiff2pdf
+    tiff2ps
+    tiff2rgba
+    tiffcmp
+    tiffcp
+    tiffcrop
+    tiffdither
+    tiffdump
+    tiffinfo
+    tiffmedian
+    tiffset
+    tiffsplit
+)
+
+# Link all executables against the framework/library
+if(tiff-framework)
+  foreach(exec IN LISTS libtiff_install_tools)
+    link_with_tiff(${exec})
+  endforeach()
+endif()
+
+install(TARGETS ${libtiff_tools}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if(OPENGL_SUPPORT)
   add_executable(tiffgt ../placeholder.h)
