@@ -72,9 +72,6 @@ extern "C"
 {
 #endif
 
-    void TIFFBuildOverviews(TIFF *, int, int *, int, const char *,
-                            int (*)(double, void *), void *);
-
 #ifdef __cplusplus
 }
 #endif

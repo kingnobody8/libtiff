@@ -7,8 +7,8 @@
 
 #include "tiffio.h"
 
-int CheckShortField(TIFF *tif, ttag_t field, uint16_t value);
-int CheckShortPairedField(TIFF *tif, ttag_t field, const uint16_t *values);
-int CheckLongField(TIFF *tif, ttag_t field, uint32_t value);
+int CheckShortField(TIFF *, const ttag_t, const uint16_t);
+int CheckShortPairedField(TIFF *, const ttag_t, const uint16_t *);
+int CheckLongField(TIFF *, const ttag_t, const uint32_t);
 
 #endif /* TEST_CHECK_TAG_H */
