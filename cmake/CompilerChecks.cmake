@@ -107,6 +107,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR
                 -Wsizeof-array-div
                 -Wsizeof-pointer-div
                 -Wsizeof-pointer-memaccess
+                -Wbool-operation
                 -Wlogical-op
                 -Wlogical-not-parentheses
                 -Wno-int-to-pointer-cast
@@ -119,7 +120,6 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR
                 -Wmisleading-indentation
                 -Wmissing-include-dirs
                 -Wunused-local-typedefs
-                -Wbool-operation
                 -Wunused-macros
                 -Wcast-qual
                 -Wcast-align)
