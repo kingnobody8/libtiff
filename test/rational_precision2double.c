@@ -411,7 +411,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
     using float.
     --------------------------------------------------------------------------------------------
   */
-    if (!TIFFSetField(tif, TIFFTAG_XRESOLUTION, auxFloatArrayResolutions[0]))
+    if (!TIFFSetField(tif, TIFFTAG_XRESOLUTION, (double)auxFloatArrayResolutions[0]))
     {
         fprintf(stderr, "Can't set TIFFTAG_XRESOLUTION tag.\n");
         goto failure;
@@ -423,12 +423,12 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
         fprintf(stderr, "Can't set TIFFTAG_YRESOLUTION tag.\n");
         goto failure;
     }
-    if (!TIFFSetField(tif, TIFFTAG_XPOSITION, auxFloatArrayResolutions[2]))
+    if (!TIFFSetField(tif, TIFFTAG_XPOSITION, (double)auxFloatArrayResolutions[2]))
     {
         fprintf(stderr, "Can't set TIFFTAG_XPOSITION tag.\n");
         goto failure;
     }
-    if (!TIFFSetField(tif, TIFFTAG_YPOSITION, auxFloatArrayResolutions[3]))
+    if (!TIFFSetField(tif, TIFFTAG_YPOSITION, (double)auxFloatArrayResolutions[3]))
     {
         fprintf(stderr, "Can't set TIFFTAG_YPOSITION tag.\n");
         goto failure;
@@ -510,7 +510,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
  * TIFF_SETGET_DOUBLE) with field_bit=FIELD_CUSTOM! -*/
 #define SHADOWSCALE_VAL 15.123456789123456789
         auxFloat = (float)SHADOWSCALE_VAL;
-        if (!TIFFSetField(tif, TIFFTAG_SHADOWSCALE, auxFloat))
+        if (!TIFFSetField(tif, TIFFTAG_SHADOWSCALE, (double)auxFloat))
         {
             fprintf(stderr, "Can't set TIFFTAG_SHADOWSCALE tag.\n");
             goto failure;
@@ -830,7 +830,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
         fprintf(
             stderr,
             "Read value of TIFFTAG_XRESOLUTION %f differs from set value %f\n",
-            auxFloat, auxFloatArrayResolutions[0]);
+            (double)auxFloat, (double)auxFloatArrayResolutions[0]);
         GOTOFAILURE
     }
     retCode = TIFFGetField(tif, TIFFTAG_YRESOLUTION, &auxFloat);
@@ -840,7 +840,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
         fprintf(
             stderr,
             "Read value of TIFFTAG_YRESOLUTION %f differs from set value %f\n",
-            auxFloat, auxFloatArrayResolutions[1]);
+            (double)auxFloat, (double)auxFloatArrayResolutions[1]);
         GOTOFAILURE
     }
     retCode = TIFFGetField(tif, TIFFTAG_XPOSITION, &auxFloat);
@@ -850,7 +850,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
         fprintf(
             stderr,
             "Read value of TIFFTAG_XPOSITION %f differs from set value %f\n",
-            auxFloat, auxFloatArrayResolutions[2]);
+            (double)auxFloat, (double)auxFloatArrayResolutions[2]);
         GOTOFAILURE
     }
     retCode = TIFFGetField(tif, TIFFTAG_YPOSITION, &auxFloat);
@@ -860,7 +860,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
         fprintf(
             stderr,
             "Read value of TIFFTAG_YPOSITION %f differs from set value %f\n",
-            auxFloat, auxFloatArrayResolutions[3]);
+            (double)auxFloat, (double)auxFloatArrayResolutions[3]);
         GOTOFAILURE
     }
 
@@ -885,7 +885,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
         fprintf(
             stderr,
             "Read value of TIFFTAG_PIXAR_FOVCOT %f differs from set value %f\n",
-            auxFloat, PIXAR_FOVCOT_VAL);
+            (double)auxFloat, PIXAR_FOVCOT_VAL);
         GOTOFAILURE
     }
 
@@ -932,7 +932,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
             fprintf(stderr,
                     "Float-Read value of TIFFTAG_BESTQUALITYSCALE %.12f "
                     "differs from set value %.12f too much,\n",
-                    auxDblUnion.flt1, BESTQUALITYSCALE_VAL);
+                    (double)auxDblUnion.flt1, BESTQUALITYSCALE_VAL);
             fprintf(stderr,
                     "whereas Double-Read value of TIFFTAG_BESTQUALITYSCALE "
                     "%.12f is nearly equal to set value %.12f\n",
@@ -959,7 +959,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
             fprintf(stderr,
                     "Float-Read value of TIFFTAG_BASELINEEXPOSURE %.12f "
                     "differs from set value %.12f too much,\n",
-                    auxDblUnion.flt1, BASELINEEXPOSURE_VAL);
+                    (double)auxDblUnion.flt1, BASELINEEXPOSURE_VAL);
             fprintf(stderr,
                     "whereas Double-Read value of TIFFTAG_BESTQUALITYSCALE "
                     "%.12f is nearly equal to set value %.12f\n",
@@ -978,14 +978,14 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                (count16 * sizeof(auxFloatArray[0])));
         for (i = 0; i < count16; i++)
         {
-            dblDiffLimit = RATIONAL_EPS * auxFloatArrayN1[i];
+            dblDiffLimit = RATIONAL_EPS * (double)auxFloatArrayN1[i];
             dblDiff = auxFloatArray[i] - auxFloatArrayN1[i];
             if (fabs(dblDiff) > fabs(dblDiffLimit))
             {
                 fprintf(stderr,
                         "Read value %d of TIFFTAG_DECODE Array %f differs from "
                         "set value %f\n",
-                        i, auxFloatArray[i], auxFloatArrayN1[i]);
+                        i, (double)auxFloatArray[i], (double)auxFloatArrayN1[i]);
                 GOTOFAILURE
             }
         }
@@ -997,14 +997,14 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                (count16 * sizeof(auxFloatArray[0])));
         for (i = 0; i < count16; i++)
         {
-            dblDiffLimit = RATIONAL_EPS * auxFloatArrayN1[i];
+            dblDiffLimit = RATIONAL_EPS * (double)auxFloatArrayN1[i];
             dblDiff = auxFloatArray[i] - auxFloatArrayN1[i];
             if (fabs(dblDiff) > fabs(dblDiffLimit))
             {
                 fprintf(stderr,
                         "Read value %d of TIFFTAG_BLACKLEVEL Array %f differs "
                         "from set value %f\n",
-                        i, auxFloatArray[i], auxFloatArrayN1[i]);
+                        i, (double)auxFloatArray[i], (double)auxFloatArrayN1[i]);
                 GOTOFAILURE
             }
         }
@@ -1141,7 +1141,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                             dblDiffLimit = RATIONAL_EPS * auxDoubleArrayW[i];
                         else
                             dblDiffLimit = 1e-6;
-                        dblDiff = auxFloat - auxDoubleArrayW[i];
+                        dblDiff = (double)auxFloat - auxDoubleArrayW[i];
                         if (fabs(dblDiff) > fabs(dblDiffLimit))
                         {
                             /*--: EXIFTAG_SUBJECTDISTANCE: LibTiff returns value
@@ -1153,12 +1153,12 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                              * values, which are not treated within LibTiff!!
                              */
                             if (!(tTag == EXIFTAG_SUBJECTDISTANCE &&
-                                  auxFloat == -1.0))
+                                  auxFloat == -1.0F))
                             {
                                 fprintf(stderr,
                                         "%d:Read value of %s %f differs from "
                                         "set value %f\n",
-                                        i, tFieldName, auxFloat,
+                                        i, tFieldName, (double)auxFloat,
                                         auxDoubleArrayW[i]);
                                 GOTOFAILURE
                             }
@@ -1315,8 +1315,8 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                                                 "Read value %d of %s #%d %f "
                                                 "differs from set value %f\n",
                                                 i, tFieldName, j,
-                                                auxFloatArray[j],
-                                                auxFloatArrayW[i + j]);
+                                                (double)auxFloatArray[j],
+                                                (double)auxFloatArrayW[i + j]);
                                         GOTOFAILURE
                                     }
                                 }

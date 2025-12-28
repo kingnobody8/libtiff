@@ -594,22 +594,22 @@ static int TIFFWriteDirectorySec(TIFF *tif, int isimage, int imagedone,
             {
                 if (!TIFFWriteDirectoryTagRational(tif, &ndir, dir,
                                                    TIFFTAG_XRESOLUTION,
-                                                   tif->tif_dir.td_xresolution))
+                                                   (double)tif->tif_dir.td_xresolution))
                     goto bad;
                 if (!TIFFWriteDirectoryTagRational(tif, &ndir, dir,
                                                    TIFFTAG_YRESOLUTION,
-                                                   tif->tif_dir.td_yresolution))
+                                                   (double)tif->tif_dir.td_yresolution))
                     goto bad;
             }
             if (TIFFFieldSet(tif, FIELD_POSITION))
             {
                 if (!TIFFWriteDirectoryTagRational(tif, &ndir, dir,
                                                    TIFFTAG_XPOSITION,
-                                                   tif->tif_dir.td_xposition))
+                                                   (double)tif->tif_dir.td_xposition))
                     goto bad;
                 if (!TIFFWriteDirectoryTagRational(tif, &ndir, dir,
                                                    TIFFTAG_YPOSITION,
-                                                   tif->tif_dir.td_yposition))
+                                                   (double)tif->tif_dir.td_yposition))
                     goto bad;
             }
             if (TIFFFieldSet(tif, FIELD_SUBFILETYPE))
@@ -2610,7 +2610,7 @@ static int TIFFWriteDirectoryTagCheckedRationalArray(TIFF *tif, uint32_t *ndir,
     }
     for (na = value, nb = m, nc = 0; nc < count; na++, nb += 2, nc++)
     {
-        DoubleToRational(*na, &nb[0], &nb[1]);
+        DoubleToRational((double)*na, &nb[0], &nb[1]);
     }
     if (tif->tif_flags & TIFF_SWAB)
         TIFFSwabArrayOfLong(m, count * 2);
@@ -2646,7 +2646,7 @@ static int TIFFWriteDirectoryTagCheckedSrationalArray(TIFF *tif, uint32_t *ndir,
     }
     for (na = value, nb = m, nc = 0; nc < count; na++, nb += 2, nc++)
     {
-        DoubleToSrational(*na, &nb[0], &nb[1]);
+        DoubleToSrational((double)*na, &nb[0], &nb[1]);
     }
     if (tif->tif_flags & TIFF_SWAB)
         TIFFSwabArrayOfLong((uint32_t *)m, count * 2);
@@ -2683,7 +2683,7 @@ TIFFWriteDirectoryTagCheckedRationalDoubleArray(TIFF *tif, uint32_t *ndir,
     }
     for (na = value, nb = m, nc = 0; nc < count; na++, nb += 2, nc++)
     {
-        DoubleToRational(*na, &nb[0], &nb[1]);
+        DoubleToRational((double)*na, &nb[0], &nb[1]);
     }
     if (tif->tif_flags & TIFF_SWAB)
         TIFFSwabArrayOfLong(m, count * 2);
@@ -2718,7 +2718,7 @@ static int TIFFWriteDirectoryTagCheckedSrationalDoubleArray(
     }
     for (na = value, nb = m, nc = 0; nc < count; na++, nb += 2, nc++)
     {
-        DoubleToSrational(*na, &nb[0], &nb[1]);
+        DoubleToSrational((double)*na, &nb[0], &nb[1]);
     }
     if (tif->tif_flags & TIFF_SWAB)
         TIFFSwabArrayOfLong((uint32_t *)m, count * 2);
