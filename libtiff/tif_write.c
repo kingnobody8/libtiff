@@ -30,8 +30,6 @@
 #include "tiffiop.h"
 #include <stdio.h>
 
-#define STRIPINCR 20 /* expansion factor on strip array */
-
 #define WRITECHECKSTRIPS(tif, module)                                          \
     (((tif)->tif_flags & TIFF_BEENWRITING) || TIFFWriteCheck((tif), 0, module))
 #define WRITECHECKTILES(tif, module)                                           \
