@@ -278,7 +278,7 @@ int main(int argc, char *argv[])
                 break;
             case 'l': /* tile length */
                 outtiled = TRUE;
-                deftilelength = atoi(optarg);
+                deftilelength = (uint32_t)atoi(optarg);
                 break;
             case 'o': /* initial directory offset */
                 diroff = strtoul(optarg, NULL, 0);
@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
                     usage(EXIT_FAILURE);
                 break;
             case 'r': /* rows/strip */
-                defrowsperstrip = atol(optarg);
+                defrowsperstrip = (uint32_t)atol(optarg);
                 break;
             case 's': /* generate stripped output */
                 outtiled = FALSE;
@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
                 break;
             case 'w': /* tile width */
                 outtiled = TRUE;
-                deftilewidth = atoi(optarg);
+                deftilewidth = (uint32_t)atoi(optarg);
                 break;
             case 'B':
                 if (strlen(mode) < (sizeof(mode) - 1))
@@ -464,7 +464,7 @@ static void processG3Options(char *cp)
         {
             cp++;
             if (strneq(cp, "1d", 2))
-                defg3opts &= ~GROUP3OPT_2DENCODING;
+                defg3opts &= ~(uint32_t)GROUP3OPT_2DENCODING;
             else if (strneq(cp, "2d", 2))
                 defg3opts |= GROUP3OPT_2DENCODING;
             else if (strneq(cp, "fill", 4))
@@ -1862,7 +1862,7 @@ DECLAREreadFunc(readSeparateTilesIntoBuffer)
         return 0;
     }
 
-    iskew = imagew - tilew * spp;
+    iskew = (int)(imagew - tilew * spp);
     tilebuf = limitMalloc(tilesize);
     if (tilebuf == 0)
         return 0;
@@ -1915,7 +1915,7 @@ DECLAREreadFunc(readSeparateTilesIntoBuffer)
                 if (colb + tilew * spp > imagew)
                 {
                     uint32_t width = imagew - colb;
-                    int oskew = tilew * spp - width;
+                    int oskew = (int)(tilew * spp - width);
                     cpSeparateBufToContigBuf(
                         bufp + colb + s * bytes_per_sample, (uint8_t *)tilebuf, nrow,
                         width / (spp * bytes_per_sample), oskew + iskew,
@@ -2021,7 +2021,7 @@ DECLAREwriteFunc(writeBufferToContigTiles)
                                              "writeBufferToContigTiles");
     uint32_t tilew = _TIFFCastSSizeToUInt32(TIFFTileRowSize(out),
                                             "writeBufferToContigTiles");
-    int iskew = imagew - tilew;
+    int iskew = (int)(imagew - tilew);
     tsize_t tilesize = TIFFTileSize(out);
     tdata_t obuf;
     uint8_t *bufp = (uint8_t *)buf;
@@ -2051,7 +2051,7 @@ DECLAREwriteFunc(writeBufferToContigTiles)
             if (colb + tilew > imagew)
             {
                 uint32_t width = imagew - colb;
-                int oskew = tilew - width;
+                int oskew = (int)(tilew - width);
                 cpStripToTile((uint8_t *)obuf, bufp + colb, nrow, width, oskew,
                               oskew + iskew);
             }
@@ -2081,7 +2081,7 @@ DECLAREwriteFunc(writeBufferToSeparateTiles)
                                             "writeBufferToSeparateTiles");
     uint32_t iimagew = _TIFFCastSSizeToUInt32(TIFFRasterScanlineSize(out),
                                               "writeBufferToSeparateTiles");
-    int iskew = iimagew - tilew * spp;
+    int iskew = (int)(iimagew - tilew * spp);
     tsize_t tilesize = TIFFTileSize(out);
     tdata_t obuf;
     uint8_t *bufp = (uint8_t *)buf;
@@ -2130,7 +2130,7 @@ DECLAREwriteFunc(writeBufferToSeparateTiles)
                 if (colb + tilew > imagew)
                 {
                     uint32_t width = (imagew - colb);
-                    int oskew = tilew - width;
+                    int oskew = (int)(tilew - width);
 
                     cpContigBufToSeparateBuf((uint8_t *)obuf, bufp + (colb * spp) + s,
                                              nrow, width / bytes_per_sample,
