@@ -144,22 +144,22 @@ static void FillTable(TIFFFaxTabEnt *T, int Size, struct proto *P, int State)
             TIFFFaxTabEnt *E = T + code;
             E->State = (unsigned char)State;
             E->Width = (unsigned char)width;
-            E->Param = param;
+            E->Param = (uint32_t)param;
         }
         P++;
     }
 }
 
-static char *storage_class = "";
-static char *const_class = "";
+static const char *storage_class = "";
+static const char *const_class = "";
 static int packoutput = 1;
-static char *prebrace = "";
-static char *postbrace = "";
+static const char *prebrace = "";
+static const char *postbrace = "";
 
-void WriteTable(FILE *fd, const TIFFFaxTabEnt *T, int Size, const char *name)
+static void WriteTable(FILE *fd, const TIFFFaxTabEnt *T, int Size, const char *name)
 {
     int i;
-    char *sep;
+    const char *sep;
 
     fprintf(fd, "%s %s TIFFFaxTabEnt %s[%d] = {", storage_class, const_class,
             name, Size);
@@ -227,6 +227,8 @@ int main(int argc, char *argv[])
                         "usage: %s [-c const] [-s storage] [-p] [-b] file\n",
                         argv[0]);
                 return (-1);
+            default:
+                break;
         }
     outputfile = optind < argc ? argv[optind] : "g3states.h";
     fd = fopen(outputfile, "w");

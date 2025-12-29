@@ -114,11 +114,11 @@ static void pack_bytes(unsigned char *buf, unsigned int smpls, uint16_t bps)
         if (8 <= bits)
         {
             bits -= 8;
-            buf[out++] = (t >> bits) & 0xFF;
+            buf[out++] = (unsigned char)((t >> bits) & 0xFF);
         }
     }
     if (0 != bits)
-        buf[out] = (t << (8 - bits)) & 0xFF;
+        buf[out] = (unsigned char)((t << (8 - bits)) & 0xFF);
 }
 
 static void pack_words(unsigned char *buf, unsigned int smpls, uint16_t bps)
@@ -160,7 +160,7 @@ static void pack_words(unsigned char *buf, unsigned int smpls, uint16_t bps)
     }
 }
 
-static void BadPPM(char *file)
+static void BadPPM(const char *file)
 {
     fprintf(stderr, "%s: Not a PPM file.\n", file);
     exit(EXIT_FAILURE);
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
     TIFF *out;
     FILE *in;
     unsigned int w, h, prec, row;
-    char *infile;
+    const char *infile;
     int c;
 #if !HAVE_DECL_OPTARG
     extern int optind;
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
                     usage(EXIT_FAILURE);
                 break;
             case 'r': /* rows/strip */
-                rowsperstrip = atoi(optarg);
+                rowsperstrip = (uint32_t)atoi(optarg);
                 break;
             case 'R': /* resolution */
                 resolution = atof(optarg);
@@ -221,6 +221,9 @@ int main(int argc, char *argv[])
             case '?':
                 usage(EXIT_FAILURE);
                 /*NOTREACHED*/
+                break;
+            default:
+                break;
         }
 
     if (optind + 2 < argc)
@@ -383,6 +386,8 @@ int main(int argc, char *argv[])
         case COMPRESSION_CCITTFAX3:
             TIFFSetField(out, TIFFTAG_GROUP3OPTIONS, g3opts);
             break;
+        default:
+            break;
     }
     if (pbm)
     {
@@ -437,7 +442,7 @@ int main(int argc, char *argv[])
     }
     for (row = 0; row < h; row++)
     {
-        if (fread(buf, linebytes, 1, in) != 1)
+        if (fread(buf, (size_t)linebytes, 1, in) != 1)
         {
             fprintf(stderr, "%s: scanline %u: Read error.\n", infile, row);
             break;
@@ -463,7 +468,7 @@ static void processG3Options(char *cp)
         {
             cp++;
             if (strneq(cp, "1d", 2))
-                g3opts &= ~GROUP3OPT_2DENCODING;
+                g3opts &= ~(uint32_t)GROUP3OPT_2DENCODING;
             else if (strneq(cp, "2d", 2))
                 g3opts |= GROUP3OPT_2DENCODING;
             else if (strneq(cp, "fill", 4))

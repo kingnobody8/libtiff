@@ -69,7 +69,7 @@ static void compresscontig(unsigned char *out, unsigned char *rgb, uint32_t n)
 static void compresssep(unsigned char *out, unsigned char *r, unsigned char *g,
                         unsigned char *b, uint32_t n)
 {
-    uint32_t red = RED, green = GREEN, blue = BLUE;
+    uint32_t red = (uint32_t)RED, green = (uint32_t)GREEN, blue = (uint32_t)BLUE;
 
     while (n-- > 0)
         *out++ =
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
                     usage(EXIT_FAILURE);
                 break;
             case 'r': /* rows/strip */
-                rowsperstrip = atoi(optarg);
+                rowsperstrip = (uint32_t)atoi(optarg);
                 break;
             case 'R':
                 RED = PCT(atoi(optarg));
@@ -162,6 +162,8 @@ int main(int argc, char *argv[])
             case '?':
                 usage(EXIT_FAILURE);
                 /*NOTREACHED*/
+                break;
+            default:
                 break;
         }
     if (argc - optind < 2)
@@ -228,6 +230,8 @@ int main(int argc, char *argv[])
             case COMPRESSION_DEFLATE:
                 if (predictor != 0)
                     TIFFSetField(out, TIFFTAG_PREDICTOR, predictor);
+                break;
+            default:
                 break;
         }
     }
@@ -320,6 +324,8 @@ int main(int argc, char *argv[])
             }
             break;
         }
+        default:
+            break;
     }
 #undef pack
     if (inbuf)
@@ -461,6 +467,18 @@ static void cpTag(TIFF *in, TIFF *out, uint16_t tag, uint16_t count,
                 CopyField(tag, doubleav);
             }
             break;
+        case TIFF_NOTYPE:
+        case TIFF_BYTE:
+        case TIFF_SBYTE:
+        case TIFF_UNDEFINED:
+        case TIFF_SSHORT:
+        case TIFF_SLONG:
+        case TIFF_SRATIONAL:
+        case TIFF_FLOAT:
+        case TIFF_IFD:
+        case TIFF_LONG8:
+        case TIFF_SLONG8:
+        case TIFF_IFD8:
         default:
             TIFFError(TIFFFileName(in),
                       "Data type %u is not supported, tag %u skipped.",

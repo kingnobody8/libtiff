@@ -867,7 +867,7 @@ static int TIFFWriteDirectorySec(TIFF *tif, int isimage, int imagedone,
             {
                 if (!TIFFWriteDirectoryTagAscii(
                         tif, &ndir, dir, TIFFTAG_INKNAMES,
-                        tif->tif_dir.td_inknameslen, tif->tif_dir.td_inknames))
+                        (uint32_t)tif->tif_dir.td_inknameslen, tif->tif_dir.td_inknames))
                     goto bad;
             }
             if (TIFFFieldSet(tif, FIELD_NUMBEROFINKS))
@@ -952,6 +952,54 @@ static int TIFFWriteDirectorySec(TIFF *tif, int isimage, int imagedone,
                                     goto bad;
                             }
                             break;
+                            case TIFF_SETGET_UNDEFINED:
+                            case TIFF_SETGET_SINT8:
+                            case TIFF_SETGET_SINT16:
+                            case TIFF_SETGET_SINT32:
+                            case TIFF_SETGET_UINT64:
+                            case TIFF_SETGET_SINT64:
+                            case TIFF_SETGET_FLOAT:
+                            case TIFF_SETGET_DOUBLE:
+                            case TIFF_SETGET_IFD8:
+                            case TIFF_SETGET_INT:
+                            case TIFF_SETGET_UINT16_PAIR:
+                            case TIFF_SETGET_C0_ASCII:
+                            case TIFF_SETGET_C0_UINT8:
+                            case TIFF_SETGET_C0_SINT8:
+                            case TIFF_SETGET_C0_UINT16:
+                            case TIFF_SETGET_C0_SINT16:
+                            case TIFF_SETGET_C0_UINT32:
+                            case TIFF_SETGET_C0_SINT32:
+                            case TIFF_SETGET_C0_UINT64:
+                            case TIFF_SETGET_C0_SINT64:
+                            case TIFF_SETGET_C0_FLOAT:
+                            case TIFF_SETGET_C0_DOUBLE:
+                            case TIFF_SETGET_C0_IFD8:
+                            case TIFF_SETGET_C16_ASCII:
+                            case TIFF_SETGET_C16_UINT8:
+                            case TIFF_SETGET_C16_SINT8:
+                            case TIFF_SETGET_C16_UINT16:
+                            case TIFF_SETGET_C16_SINT16:
+                            case TIFF_SETGET_C16_UINT32:
+                            case TIFF_SETGET_C16_SINT32:
+                            case TIFF_SETGET_C16_UINT64:
+                            case TIFF_SETGET_C16_SINT64:
+                            case TIFF_SETGET_C16_FLOAT:
+                            case TIFF_SETGET_C16_DOUBLE:
+                            case TIFF_SETGET_C16_IFD8:
+                            case TIFF_SETGET_C32_ASCII:
+                            case TIFF_SETGET_C32_SINT8:
+                            case TIFF_SETGET_C32_UINT16:
+                            case TIFF_SETGET_C32_SINT16:
+                            case TIFF_SETGET_C32_UINT32:
+                            case TIFF_SETGET_C32_SINT32:
+                            case TIFF_SETGET_C32_UINT64:
+                            case TIFF_SETGET_C32_SINT64:
+                            case TIFF_SETGET_C32_FLOAT:
+                            case TIFF_SETGET_C32_DOUBLE:
+                            case TIFF_SETGET_C32_IFD8:
+                            case TIFF_SETGET_UINT8:
+                            case TIFF_SETGET_OTHER:
                             default:
                                 TIFFErrorExtR(
                                     tif, module,
@@ -970,7 +1018,7 @@ static int TIFFWriteDirectorySec(TIFF *tif, int isimage, int imagedone,
         {
             uint16_t tag =
                 (uint16_t)tif->tif_dir.td_customValues[m].info->field_tag;
-            uint32_t count = tif->tif_dir.td_customValues[m].count;
+            uint32_t count = (uint32_t)tif->tif_dir.td_customValues[m].count;
             switch (tif->tif_dir.td_customValues[m].info->field_type)
             {
                 case TIFF_ASCII:
@@ -1127,6 +1175,7 @@ static int TIFFWriteDirectorySec(TIFF *tif, int isimage, int imagedone,
                             (uint64_t *)tif->tif_dir.td_customValues[m].value))
                         goto bad;
                     break;
+                case TIFF_NOTYPE:
                 default:
                     assert(0); /* we should never get here */
                     break;
@@ -3491,7 +3540,7 @@ int _TIFFRewriteField(TIFF *tif, uint16_t tag, TIFFDataType in_datatype,
         if (entry_tag == tag)
             break;
 
-        read_offset += dirsize;
+        read_offset += (uint64_t)dirsize;
     }
 
     if (entry_tag != tag)
@@ -3621,7 +3670,7 @@ int _TIFFRewriteField(TIFF *tif, uint16_t tag, TIFFDataType in_datatype,
         return 0;
 
     if (datatype == in_datatype)
-        memcpy(buf_to_write, data, count * TIFFDataWidth(datatype));
+        memcpy(buf_to_write, data, (size_t)(count * TIFFDataWidth(datatype)));
     else if (datatype == TIFF_SLONG && in_datatype == TIFF_SLONG8)
     {
         tmsize_t i;
@@ -3714,8 +3763,8 @@ int _TIFFRewriteField(TIFF *tif, uint16_t tag, TIFFDataType in_datatype,
         tif->tif_dir.td_stripoffset_entry.tdir_type == 0 &&
         tif->tif_dir.td_stripoffset_entry.tdir_offset.toff_long8 == 0)
     {
-        tif->tif_dir.td_stripoffset_entry.tdir_type = datatype;
-        tif->tif_dir.td_stripoffset_entry.tdir_count = count;
+        tif->tif_dir.td_stripoffset_entry.tdir_type = (uint16_t)datatype;
+        tif->tif_dir.td_stripoffset_entry.tdir_count = (uint64_t)count;
     }
     else if ((tag == TIFFTAG_TILEBYTECOUNTS ||
               tag == TIFFTAG_STRIPBYTECOUNTS) &&
@@ -3723,8 +3772,8 @@ int _TIFFRewriteField(TIFF *tif, uint16_t tag, TIFFDataType in_datatype,
              tif->tif_dir.td_stripbytecount_entry.tdir_type == 0 &&
              tif->tif_dir.td_stripbytecount_entry.tdir_offset.toff_long8 == 0)
     {
-        tif->tif_dir.td_stripbytecount_entry.tdir_type = datatype;
-        tif->tif_dir.td_stripbytecount_entry.tdir_count = count;
+        tif->tif_dir.td_stripbytecount_entry.tdir_type = (uint16_t)datatype;
+        tif->tif_dir.td_stripbytecount_entry.tdir_count = (uint64_t)count;
     }
 
     /* -------------------------------------------------------------------- */
@@ -3772,13 +3821,13 @@ int _TIFFRewriteField(TIFF *tif, uint16_t tag, TIFFDataType in_datatype,
         if (count * TIFFDataWidth(datatype) == 4)
         {
             uint32_t value;
-            memcpy(&value, buf_to_write, count * TIFFDataWidth(datatype));
+            memcpy(&value, buf_to_write, (size_t)(count * TIFFDataWidth(datatype)));
             entry_offset = value;
         }
         else
         {
             memcpy(&entry_offset, buf_to_write,
-                   count * TIFFDataWidth(datatype));
+                   (size_t)(count * TIFFDataWidth(datatype)));
         }
     }
 
@@ -3788,7 +3837,7 @@ int _TIFFRewriteField(TIFF *tif, uint16_t tag, TIFFDataType in_datatype,
     /* -------------------------------------------------------------------- */
     /*      Adjust the directory entry.                                     */
     /* -------------------------------------------------------------------- */
-    entry_type = datatype;
+    entry_type = (uint16_t)datatype;
     entry_count = (uint64_t)count;
     memcpy(direntry_raw + 2, &entry_type, sizeof(uint16_t));
     if (tif->tif_flags & TIFF_SWAB)

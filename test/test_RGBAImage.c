@@ -92,7 +92,7 @@ const char *logFilename = "test_RGBAImage_log.txt";
 const char *logFilename = NULL;
 #endif
 bool blnMultipleLogFiles = FALSE;
-char *arrLogFilenames[] = {
+const char *arrLogFilenames[] = {
     "test_RGBAImage_log_1.txt", "test_RGBAImage_log_2.txt",
     "test_RGBAImage_log_3.txt", "test_RGBAImage_log_4.txt"};
 FILE *fpLog = NULL;
@@ -188,9 +188,10 @@ const char *orientationStrings[] = {
 
 /* Writes some pixel data as scanline or tiles to file.
  */
-int write_image_data(TIFF *tif, uint32_t width, uint32_t length, bool tiled,
-                     unsigned int pixval, unsigned char *plastlinedata,
-                     unsigned int lastlinebytesmax)
+static int write_image_data(TIFF *tif, uint32_t width, uint32_t length,
+                            bool tiled, unsigned int pixval,
+                            unsigned char *plastlinedata,
+                            unsigned int lastlinebytesmax)
 {
     size_t bufLen;
     unsigned char *pbufLine = NULL;
@@ -227,7 +228,7 @@ int write_image_data(TIFF *tif, uint32_t width, uint32_t length, bool tiled,
         bufLen = (((size_t)width * SPP * BPS) + 7) / 8;
     }
 
-    pbufLine = (unsigned char *)_TIFFmalloc(bufLen);
+    pbufLine = (unsigned char *)_TIFFmalloc((tmsize_t)bufLen);
     if (pbufLine == NULL)
         return 1;
 
@@ -377,11 +378,11 @@ failure:
  * an image with given number of lines as strips (scanlines) or tiles to
  * file.
  */
-int write_data_to_current_directory(TIFF *tif, uint32_t width, uint32_t length,
-                                    bool tiled, uint16_t orientation,
-                                    bool write_data,
-                                    unsigned char *plastlinedata,
-                                    unsigned int lastlinebytesmax)
+static int write_data_to_current_directory(TIFF *tif, uint32_t width,
+                                           uint32_t length, bool tiled,
+                                           uint16_t orientation, bool write_data,
+                                           unsigned char *plastlinedata,
+                                           unsigned int lastlinebytesmax)
 {
     if (!tif)
     {
@@ -436,8 +437,8 @@ failure:
 
 /* Check some contents of the raster buffer. Ensure they are correctly filled.
  */
-int checkRasterContents(char *txt, TIFFRGBAImage *img, uint32_t *raster,
-                        uint32_t rw, uint32_t rh, uint16_t orientation)
+static int checkRasterContents(const char *txt, TIFFRGBAImage *img, uint32_t *raster,
+                               uint32_t rw, uint32_t rh, uint16_t orientation)
 {
     /* For this test, the image pixel samples are set for R= row, G= column, B=
      * 0xfe and the last raster component is 0xff. The raster is preset with
@@ -466,12 +467,12 @@ int checkRasterContents(char *txt, TIFFRGBAImage *img, uint32_t *raster,
 
     /* When image is cropped, or raster is larger than image, determine crop
      * lengths for image within raster. */
-    uint32_t rwmin = TIFFmin(rw, img->width - img->col_offset);
-    uint32_t rhmin = TIFFmin(rh, img->height - img->row_offset);
+    uint32_t rwmin = TIFFmin(rw, img->width - (uint32_t)img->col_offset);
+    uint32_t rhmin = TIFFmin(rh, img->height - (uint32_t)img->row_offset);
     /* When there is a col_offset or row_offset, the image pixels of the corners
      * are differently. */
-    uint32_t xcol_start = img->col_offset;
-    uint32_t xrow_start = img->row_offset;
+    uint32_t xcol_start = (uint32_t)img->col_offset;
+    uint32_t xrow_start = (uint32_t)img->row_offset;
 
     /* Pixel values of image corner pixels according to image dimensions written
      * in write_image_data(). Pixel values are set to (rowIdx, colIdx, 0xfe).
@@ -585,9 +586,9 @@ int checkRasterContents(char *txt, TIFFRGBAImage *img, uint32_t *raster,
     {
         case ORIENTATION_TOPLEFT:
             P[0].x = 0;
-            P[0].y = TIFFmax(0, (tmsize_t)rh - rhmin);
+            P[0].y = (uint32_t)TIFFmax(0, (tmsize_t)rh - (tmsize_t)rhmin);
             P[1].x = rwmin - 1;
-            P[1].y = TIFFmax(0, (tmsize_t)rh - rhmin);
+            P[1].y = (uint32_t)TIFFmax(0, (tmsize_t)rh - (tmsize_t)rhmin);
             P[2].x = 0;
             P[2].y = rh - 1;
             P[3].x = rwmin - 1;
@@ -595,9 +596,9 @@ int checkRasterContents(char *txt, TIFFRGBAImage *img, uint32_t *raster,
             break;
         case ORIENTATION_TOPRIGHT:
             P[0].x = rwmin - 1;
-            P[0].y = TIFFmax(0, (tmsize_t)rh - rhmin);
+            P[0].y = (uint32_t)TIFFmax(0, (tmsize_t)rh - (tmsize_t)rhmin);
             P[1].x = 0;
-            P[1].y = TIFFmax(0, (tmsize_t)rh - rhmin);
+            P[1].y = (uint32_t)TIFFmax(0, (tmsize_t)rh - (tmsize_t)rhmin);
             P[2].x = rwmin - 1;
             P[2].y = rh - 1;
             P[3].x = 0;
@@ -609,9 +610,9 @@ int checkRasterContents(char *txt, TIFFRGBAImage *img, uint32_t *raster,
             P[1].x = 0;
             P[1].y = rh - 1;
             P[2].x = rwmin - 1;
-            P[2].y = TIFFmax(0, (tmsize_t)rh - rhmin);
+            P[2].y = (uint32_t)TIFFmax(0, (tmsize_t)rh - (tmsize_t)rhmin);
             P[3].x = 0;
-            P[3].y = TIFFmax(0, (tmsize_t)rh - rhmin);
+            P[3].y = (uint32_t)TIFFmax(0, (tmsize_t)rh - (tmsize_t)rhmin);
             break;
         case ORIENTATION_BOTLEFT:
             P[0].x = 0;
@@ -619,9 +620,9 @@ int checkRasterContents(char *txt, TIFFRGBAImage *img, uint32_t *raster,
             P[1].x = rwmin - 1;
             P[1].y = rh - 1;
             P[2].x = 0;
-            P[2].y = TIFFmax(0, (tmsize_t)rh - rhmin);
+            P[2].y = (uint32_t)TIFFmax(0, (tmsize_t)rh - (tmsize_t)rhmin);
             P[3].x = rwmin - 1;
-            P[3].y = TIFFmax(0, (tmsize_t)rh - rhmin);
+            P[3].y = (uint32_t)TIFFmax(0, (tmsize_t)rh - (tmsize_t)rhmin);
             break;
         default: /* NOTREACHED */
             fprintf(stdXOut, "Error in SWITCH statement at line %d", __LINE__);
@@ -662,8 +663,9 @@ failure:
 } /*-- checkRasterContents() --*/
 
 /* Prints the raster buffer 2D matrix as hex to display and/or to file. */
-void printRaster(char *txt, TIFFRGBAImage *img, uint32_t *raster, uint32_t rw,
-                 uint32_t rh, uint16_t orientation, bool tiled)
+static void printRaster(const char *txt, TIFFRGBAImage *img, uint32_t *raster,
+                        uint32_t rw, uint32_t rh, uint16_t orientation,
+                        bool tiled)
 {
     uint32_t h, w;
     FILE *fp = NULL;
@@ -743,10 +745,10 @@ void printRaster(char *txt, TIFFRGBAImage *img, uint32_t *raster, uint32_t rw,
  * reads the data from file into that raster. The raster content of both
  * functions is printed and checked.
  */
-int testRGBAImageReadFunctions(TIFF *tif, uint32_t imgWidth, uint32_t imgLength,
-                               uint32_t rWidth, uint32_t rHeight,
-                               uint16_t orientation, uint16_t req_orientation,
-                               int cLine)
+static int testRGBAImageReadFunctions(TIFF *tif, uint32_t imgWidth,
+                                      uint32_t imgLength, uint32_t rWidth,
+                                      uint32_t rHeight, uint16_t orientation,
+                                      uint16_t req_orientation, int cLine)
 {
     int ret;
     uint32_t *raster1 = NULL;
@@ -758,10 +760,10 @@ int testRGBAImageReadFunctions(TIFF *tif, uint32_t imgWidth, uint32_t imgLength,
     /* Just for debugging output in printRaster() */
     bool tiledlocal = TIFFIsTiled(tif);
 
-    tmsize_t rasterSize = sizeof(uint32_t) * rWidth * rHeight;
+    tmsize_t rasterSize = (tmsize_t)(sizeof(uint32_t) * rWidth * rHeight);
     if (rasterSize == 0)
     {
-        rasterSize = sizeof(uint32_t) * imgWidth * imgLength;
+        rasterSize = (tmsize_t)(sizeof(uint32_t) * imgWidth * imgLength);
     }
     raster1 = (uint32_t *)_TIFFmalloc(rasterSize);
     raster2 = (uint32_t *)_TIFFmalloc(rasterSize);
@@ -772,8 +774,8 @@ int testRGBAImageReadFunctions(TIFF *tif, uint32_t imgWidth, uint32_t imgLength,
                 __LINE__, cLine);
         goto failure;
     }
-    memset(raster1, RASTER_MEMSETVAL, rasterSize);
-    memset(raster2, RASTER_MEMSETVAL, rasterSize);
+    memset(raster1, RASTER_MEMSETVAL, (size_t)rasterSize);
+    memset(raster2, RASTER_MEMSETVAL, (size_t)rasterSize);
 
     if (TIFFRGBAImageBegin(&img, tif, 0, emsg))
     {
@@ -811,11 +813,11 @@ failure:
  * raster and reads the data from file into that raster. The raster content is
  * printed and checked.
  */
-int testRGBAImageReadWithOffsets(TIFF *tif, uint32_t imgWidth,
-                                 uint32_t imgLength, int w_offset, int l_offset,
-                                 uint32_t rWidth, uint32_t rHeight,
-                                 uint16_t orientation, uint16_t req_orientation,
-                                 int cLine)
+static int testRGBAImageReadWithOffsets(TIFF *tif, uint32_t imgWidth,
+                                        uint32_t imgLength, int w_offset,
+                                        int l_offset, uint32_t rWidth,
+                                        uint32_t rHeight, uint16_t orientation,
+                                        uint16_t req_orientation, int cLine)
 {
     int ret;
     uint32_t *raster1 = NULL;
@@ -826,10 +828,10 @@ int testRGBAImageReadWithOffsets(TIFF *tif, uint32_t imgWidth,
     /* Just for debugging output in printRaster() */
     bool tiledlocal = TIFFIsTiled(tif);
 
-    tmsize_t rasterSize = sizeof(uint32_t) * rWidth * rHeight;
+    tmsize_t rasterSize = (tmsize_t)(sizeof(uint32_t) * rWidth * rHeight);
     if (rasterSize == 0)
     {
-        rasterSize = sizeof(uint32_t) * imgWidth * imgLength;
+        rasterSize = (tmsize_t)(sizeof(uint32_t) * imgWidth * imgLength);
     }
     raster1 = (uint32_t *)_TIFFmalloc(rasterSize);
     if (raster1 == NULL)
@@ -839,7 +841,7 @@ int testRGBAImageReadWithOffsets(TIFF *tif, uint32_t imgWidth,
                 __LINE__, cLine);
         goto failure;
     }
-    memset(raster1, RASTER_MEMSETVAL, rasterSize);
+    memset(raster1, RASTER_MEMSETVAL, (size_t)rasterSize);
 
     if (TIFFRGBAImageBegin(&img, tif, 0, emsg))
     {
@@ -875,9 +877,10 @@ failure:
 /* Tests TIFFReadRGBAImage functions with different raster sizes, col_offset,
  * row_offset and required orientations in the raster.
  */
-int test_ReadRGBAImage(const char *filename, unsigned int openMode,
-                       uint16_t orientation, uint32_t width, uint32_t length,
-                       bool tiled, unsigned int req_orientation)
+static int test_ReadRGBAImage(const char *filename, unsigned int openMode,
+                              uint16_t orientation, uint32_t width,
+                              uint32_t length, bool tiled,
+                              unsigned int req_orientation)
 {
 
     int ret;
@@ -984,36 +987,36 @@ int test_ReadRGBAImage(const char *filename, unsigned int openMode,
      * be smaller ===*/
     /*-- row_offset --*/
 testcase:
-    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, 0, length - 1,
+    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, 0, (int)(length - 1),
                                             width, length, orientation,
                                             (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
-    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, 0, length - 4,
+    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, 0, (int)(length - 4),
                                             width, 4, orientation,
                                             (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
-    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, 0, length - 4,
+    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, 0, (int)(length - 4),
                                             width, 2, orientation,
                                             (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
 
     /*-- col_offset --*/
-    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, width - 2, 0,
+    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, (int)(width - 2), 0,
                                             width, length, orientation,
                                             (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
-    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, width - 2, 0, 2,
+    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, (int)(width - 2), 0, 2,
                                             length, orientation,
                                             (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
-    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, width - 3, 0, 2,
+    if ((ret = testRGBAImageReadWithOffsets(tif, width, length, (int)(width - 3), 0, 2,
                                             length, orientation,
                                             (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
 
     /*-- row_offset and col_offset --*/
     if ((ret = testRGBAImageReadWithOffsets(
-             tif, width, length, width - 4, length - 2, width, length,
+             tif, width, length, (int)(width - 4), (int)(length - 2), width, length,
              orientation, (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
 
@@ -1023,11 +1026,11 @@ testcase:
     errHandler = TIFFSetErrorHandler(NULL);
 
     /*-- row_offset --*/
-    if (!(ret = testRGBAImageReadWithOffsets(tif, width, length, 0, length,
+    if (!(ret = testRGBAImageReadWithOffsets(tif, width, length, 0, (int)length,
                                              width, length, orientation,
                                              (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
-    if (!(ret = testRGBAImageReadWithOffsets(tif, width, length, 0, length + 5,
+    if (!(ret = testRGBAImageReadWithOffsets(tif, width, length, 0, (int)(length + 5),
                                              width, length, orientation,
                                              (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
@@ -1037,11 +1040,11 @@ testcase:
         GOTOFAILURE
 
     /*-- col_offset --*/
-    if (!(ret = testRGBAImageReadWithOffsets(tif, width, length, width, 0,
+    if (!(ret = testRGBAImageReadWithOffsets(tif, width, length, (int)width, 0,
                                              width, length, orientation,
                                              (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
-    if (!(ret = testRGBAImageReadWithOffsets(tif, width, length, width + 5, 0,
+    if (!(ret = testRGBAImageReadWithOffsets(tif, width, length, (int)(width + 5), 0,
                                              width, length, orientation,
                                              (uint16_t)req_orientation, __LINE__)))
         GOTOFAILURE
@@ -1077,7 +1080,7 @@ failure:
  * new one is re-opened, and the stdXOut output is redirected from stderr to
  * file.
  */
-void checkOpenLogFile(int blnReOpen)
+static void checkOpenLogFile(int blnReOpen)
 {
     /* First open logfile, if it does not exist, otherwise leave it as is except
      * blnReOpen is set. */
@@ -1166,7 +1169,7 @@ int main(void)
         {
             if (blnMultipleLogFiles)
             {
-                unsigned int n = tiled * 2 + (planarconfig - 1);
+                unsigned int n = (unsigned int)tiled * 2 + (planarconfig - 1);
                 assert(n <
                        (sizeof(arrLogFilenames) / sizeof(arrLogFilenames[0])));
                 logFilename = arrLogFilenames[n];

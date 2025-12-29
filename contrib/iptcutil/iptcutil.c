@@ -27,7 +27,7 @@ typedef struct _tag_spec
 {
     short id;
 
-    char *name;
+    const char *name;
 } tag_spec;
 
 static tag_spec tags[] = {{5, "Image Name"},
@@ -87,7 +87,7 @@ static tag_spec tags[] = {{5, "Image Name"},
  * We format the output using HTML conventions
  * to preserve control characters and such.
  */
-void formatString(FILE *ofile, const char *s, int len)
+static void formatString(FILE *ofile, const char *s, int len)
 {
     putc('"', ofile);
     for (; len > 0; --len, ++s)
@@ -139,7 +139,7 @@ static html_code html_codes[] = {
  * back to the original ASCII representation.
  * - returns the number of characters dropped.
  */
-int convertHTMLcodes(char *s, int len)
+static int convertHTMLcodes(char *s, int len)
 {
     if (len <= 0 || s == (char *)NULL || *s == '\0')
         return 0;
@@ -170,7 +170,7 @@ int convertHTMLcodes(char *s, int len)
         for (i = 0; i < codes; i++)
         {
             if (html_codes[i].len <= len)
-                if (STRNICMP(s, html_codes[i].code, html_codes[i].len) == 0)
+                if (STRNICMP(s, html_codes[i].code, (size_t)html_codes[i].len) == 0)
                 {
                     strcpy(s + 1, s + html_codes[i].len);
                     *s = html_codes[i].val;
@@ -182,11 +182,12 @@ int convertHTMLcodes(char *s, int len)
     return 0;
 }
 
-int formatIPTC(FILE *ifile, FILE *ofile)
+static int formatIPTC(FILE *ifile, FILE *ofile)
 {
     unsigned int foundiptc, tagsfound;
 
-    char *readable, *str;
+    const char *readable;
+    char *str;
 
     long tagindx, taglen;
 
@@ -299,21 +300,21 @@ int formatIPTC(FILE *ifile, FILE *ofile)
         /* Silence Coverity Scan warning about tainted_data: Passing tainted
          * expression *str to formatString, which uses it as an offset. */
         /* coverity[tainted_data:SUPPRESS] */
-        formatString(ofile, str, taglen);
+        formatString(ofile, str, (int)taglen);
         free(str);
 
         tagsfound++;
 
         c = getc(ifile);
     }
-    return tagsfound;
+    return (int)tagsfound;
 }
 
-int tokenizer(unsigned inflag, char *token, int tokmax, char *line, char *white,
-              char *brkchar, char *quote, char eschar, char *brkused, int *next,
-              char *quoted);
+int tokenizer(unsigned inflag, char *token, int tokmax, char *line,
+              const char *white, const char *brkchar, const char *quote,
+              char eschar, char *brkused, int *next, char *quoted);
 
-char *super_fgets(char *b, int *blen, FILE *file)
+static char *super_fgets(char *b, int *blen, FILE *file)
 {
     int c, len;
 
@@ -329,14 +330,14 @@ char *super_fgets(char *b, int *blen, FILE *file)
         {
             long tlen;
 
-            tlen = (int)(q - b);
+            tlen = (long)(q - b);
             len <<= 1;
-            b = (char *)realloc((char *)b, (len + 2));
+            b = (char *)realloc((char *)b, (size_t)(len + 2));
             if ((char *)b == (char *)NULL)
                 break;
             q = b + tlen;
         }
-        *q = (unsigned char)c;
+        *q = (char)c;
     }
     *blen = 0;
     if ((unsigned char *)b != (unsigned char *)NULL)
@@ -366,8 +367,8 @@ int main(int argc, char *argv[])
 
     FILE *ifile = stdin, *ofile = stdout;
 
-    char c,
-        *usage = "usage: iptcutil -t | -b [-i file] [-o file] <input >output";
+    char c;
+    const char *usage = "usage: iptcutil -t | -b [-i file] [-o file] <input >output";
 
     if (argc < 2)
     {
@@ -448,14 +449,14 @@ int main(int argc, char *argv[])
 
         int inputlen = BUFFER_SZ;
 
-        line = (char *)malloc(inputlen);
+        line = (char *)malloc((size_t)inputlen);
         while ((line = super_fgets(line, &inputlen, ifile)) != NULL)
         {
             state = 0;
             next = 0;
 
-            token = (char *)malloc(inputlen);
-            newstr = (char *)malloc(inputlen);
+            token = (char *)malloc((size_t)inputlen);
+            newstr = (char *)malloc((size_t)inputlen);
             while (tokenizer(0, token, inputlen, line, "", "=", "\"", 0,
                              &brkused, &next, &quoted) == 0)
             {
@@ -494,7 +495,7 @@ int main(int argc, char *argv[])
                         {
                             char *s = &token[next2 - 1];
 
-                            len -= convertHTMLcodes(s, (int)strlen(s));
+                            len -= (unsigned long)convertHTMLcodes(s, (int)strlen(s));
                         }
                     }
 
@@ -503,15 +504,15 @@ int main(int argc, char *argv[])
                     fputc(recnum, ofile);
                     if (len < 0x10000)
                     {
-                        fputc((len >> 8) & 255, ofile);
-                        fputc(len & 255, ofile);
+                        fputc((int)((len >> 8) & 255), ofile);
+                        fputc((int)(len & 255), ofile);
                     }
                     else
                     {
-                        fputc(((len >> 24) & 255) | 0x80, ofile);
-                        fputc((len >> 16) & 255, ofile);
-                        fputc((len >> 8) & 255, ofile);
-                        fputc(len & 255, ofile);
+                        fputc((int)(((len >> 24) & 255) | 0x80), ofile);
+                        fputc((int)((len >> 16) & 255), ofile);
+                        fputc((int)((len >> 8) & 255), ofile);
+                        fputc((int)(len & 255), ofile);
                     }
                     next2 = 0;
                     while (len--)
@@ -728,9 +729,9 @@ int _p_tokpos;    /* current token pos  */
 
 /* routine to find character in string ... used only by "tokenizer" */
 
-int sindex(char ch, char *string)
+static int sindex(char ch, const char *string)
 {
-    char *cp;
+    const char *cp;
     for (cp = string; *cp; ++cp)
         if (ch == *cp)
             return (int)(cp - string); /* return position of character */
@@ -739,7 +740,7 @@ int sindex(char ch, char *string)
 
 /* routine to store a character in a string ... used only by "tokenizer" */
 
-void chstore(char *string, int max, char ch)
+static void chstore(char *string, int max, char ch)
 {
     char c;
     if (_p_tokpos >= 0 && _p_tokpos < max - 1)
@@ -766,9 +767,9 @@ void chstore(char *string, int max, char ch)
     return;
 }
 
-int tokenizer(unsigned inflag, char *token, int tokmax, char *line, char *white,
-              char *brkchar, char *quote, char eschar, char *brkused, int *next,
-              char *quoted)
+int tokenizer(unsigned inflag, char *token, int tokmax, char *line,
+              const char *white, const char *brkchar, const char *quote,
+              char eschar, char *brkused, int *next, char *quoted)
 {
     int qp;
     char c, nc;
@@ -799,6 +800,8 @@ int tokenizer(unsigned inflag, char *token, int tokmax, char *line, char *white,
                 case IN_QUOTE: /* just keep going */
                     chstore(token, tokmax, c);
                     break;
+                default:
+                    break;
             }
         }
         else if ((qp = sindex(c, quote)) >= 0) /* quote */
@@ -827,6 +830,8 @@ int tokenizer(unsigned inflag, char *token, int tokmax, char *line, char *white,
                 case IN_OZONE:
                     *brkused = c; /* uses quote as break char */
                     goto byebye;
+                default:
+                    break;
             }
         }
         else if ((qp = sindex(c, white)) >= 0) /* white */
@@ -843,6 +848,8 @@ int tokenizer(unsigned inflag, char *token, int tokmax, char *line, char *white,
 
                 case IN_QUOTE:
                     chstore(token, tokmax, c); /* it's valid here */
+                    break;
+                default:
                     break;
             }
         }
@@ -871,6 +878,8 @@ int tokenizer(unsigned inflag, char *token, int tokmax, char *line, char *white,
 
                 case IN_OZONE:
                     goto byebye;
+                default:
+                    break;
             }
         }
         else /* anything else is just a real character */
@@ -888,6 +897,8 @@ int tokenizer(unsigned inflag, char *token, int tokmax, char *line, char *white,
 
                 case IN_OZONE:
                     goto byebye;
+                default:
+                    break;
             }
         }
     } /* end of main loop */

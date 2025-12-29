@@ -486,7 +486,7 @@ static uint16_t fillorder = 0;
 static uint32_t rowsperstrip = 0;
 static uint32_t g3opts = 0;
 static int ignore = FALSE; /* if true, ignore read errors */
-static uint32_t defg3opts = (uint32_t)-1;
+static uint32_t defg3opts = UINT32_MAX;
 static int quality = 100;      /* JPEG quality */
 static int jpegcolormode = -1; /* means YCbCr or to not convert */
 static uint16_t defcompression = (uint16_t)-1;
@@ -674,12 +674,12 @@ static int combineSeparateTileSamplesBytes(unsigned char *[], unsigned char *,
                                            FILE *, int, int);
 
 /* Dump functions for debugging */
-static void dump_info(FILE *, int, char *, char *, ...);
-static int dump_data(FILE *, int, char *, unsigned char *, uint32_t);
-static int dump_byte(FILE *, int, char *, unsigned char);
-static int dump_short(FILE *, int, char *, uint16_t);
-static int dump_long(FILE *, int, char *, uint32_t);
-static int dump_wide(FILE *, int, char *, uint64_t);
+static void dump_info(FILE *, int, const char *, const char *, ...);
+static int dump_data(FILE *, int, const char *, unsigned char *, uint32_t);
+static int dump_byte(FILE *, int, const char *, unsigned char);
+static int dump_short(FILE *, int, const char *, uint16_t);
+static int dump_long(FILE *, int, const char *, uint32_t);
+static int dump_wide(FILE *, int, const char *, uint64_t);
 static int dump_buffer(FILE *, int, uint32_t, uint32_t, uint32_t,
                        unsigned char *);
 
@@ -958,8 +958,8 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
     tsize_t tilesize = TIFFTileSize(in);
     unsigned char *tilebuf = NULL;
 
-    bytes_per_sample = (bps + 7) / 8;
-    bytes_per_pixel = ((bps * spp) + 7) / 8;
+    bytes_per_sample = (uint32_t)((bps + 7) / 8);
+    bytes_per_pixel = (uint32_t)(((bps * spp) + 7) / 8);
 
     if ((bps % 8) == 0)
         shift_width = 0;
@@ -1089,7 +1089,7 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
                             {
                                 if (extractContigSamplesShifted8bits(
                                         src, dst, ncol, sample, spp, bps, count,
-                                        0, ncol, prev_trailing_bits))
+                                        0, ncol, (int)prev_trailing_bits))
                                 {
                                     TIFFError("readContigTilesIntoBuffer",
                                               "Unable to extract row %" PRIu32
@@ -1102,7 +1102,7 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
                             }
                             else if (extractContigSamplesShifted16bits(
                                          src, dst, ncol, sample, spp, bps,
-                                         count, 0, ncol, prev_trailing_bits))
+                                         count, 0, ncol, (int)prev_trailing_bits))
                             {
                                 TIFFError("readContigTilesIntoBuffer",
                                           "Unable to extract row %" PRIu32
@@ -1115,7 +1115,7 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
                         case 2:
                             if (extractContigSamplesShifted24bits(
                                     src, dst, ncol, sample, spp, bps, count, 0,
-                                    ncol, prev_trailing_bits))
+                                    ncol, (int)prev_trailing_bits))
                             {
                                 TIFFError("readContigTilesIntoBuffer",
                                           "Unable to extract row %" PRIu32
@@ -1130,7 +1130,7 @@ static int readContigTilesIntoBuffer(TIFF *in, uint8_t *buf,
                         case 5:
                             if (extractContigSamplesShifted32bits(
                                     src, dst, ncol, sample, spp, bps, count, 0,
-                                    ncol, prev_trailing_bits))
+                                    ncol, (int)prev_trailing_bits))
                             {
                                 TIFFError("readContigTilesIntoBuffer",
                                           "Unable to extract row %" PRIu32
@@ -1172,7 +1172,7 @@ static int readSeparateTilesIntoBuffer(TIFF *in, uint8_t *obuf,
     unsigned char *srcbuffs[MAX_SAMPLES];
     unsigned char *tbuff = NULL;
 
-    bytes_per_sample = (bps + 7) / 8;
+    bytes_per_sample = (uint16_t)((bps + 7) / 8);
 
     for (sample = 0; (sample < spp) && (sample < MAX_SAMPLES); sample++)
     {
@@ -1361,7 +1361,7 @@ static int writeBufferToSeparateStrips(TIFF *out, uint8_t *buf, uint32_t length,
 
     (void)TIFFGetFieldDefaulted(out, TIFFTAG_ROWSPERSTRIP, &local_rowsperstrip);
     (void)TIFFGetFieldDefaulted(out, TIFFTAG_BITSPERSAMPLE, &bps);
-    bytes_per_sample = (bps + 7) / 8;
+    bytes_per_sample = (uint32_t)((bps + 7) / 8);
     if (width == 0 || (uint32_t)bps * (uint32_t)spp > UINT32_MAX / width ||
         bps * spp * width > UINT32_MAX - 7U)
     {
@@ -1395,7 +1395,7 @@ static int writeBufferToSeparateStrips(TIFF *out, uint8_t *buf, uint32_t length,
 
             stripsize = TIFFVStripSize(out, nrows);
             src = buf + (row * rowsize);
-            memset(obuf, '\0', rowstripsize + NUM_BUFF_OVERSIZE_BYTES);
+            memset(obuf, '\0', (size_t)(rowstripsize + NUM_BUFF_OVERSIZE_BYTES));
             if (extractContigSamplesToBuffer((uint8_t *)obuf, src, nrows, width, s, spp,
                                              bps, dump))
             {
@@ -1499,7 +1499,7 @@ static int writeBufferToContigTiles(TIFF *out, uint8_t *buf,
     tilebuf = (unsigned char *)limitMalloc(tile_buffsize + NUM_BUFF_OVERSIZE_BYTES);
     if (tilebuf == 0)
         return 1;
-    memset(tilebuf, 0, tile_buffsize + NUM_BUFF_OVERSIZE_BYTES);
+    memset(tilebuf, 0, (size_t)(tile_buffsize + NUM_BUFF_OVERSIZE_BYTES));
     for (row = 0; row < imagelength; row += tl)
     {
         nrow = (row + tl > imagelength) ? imagelength - row : tl;
@@ -1558,7 +1558,7 @@ static int writeBufferToSeparateTiles(TIFF *out, uint8_t *buf,
 
     if (obuf == NULL)
         return 1;
-    memset(obuf, 0, TIFFTileSize(out) + NUM_BUFF_OVERSIZE_BYTES);
+    memset(obuf, 0, (size_t)(TIFFTileSize(out) + NUM_BUFF_OVERSIZE_BYTES));
 
     if (!TIFFGetField(out, TIFFTAG_TILELENGTH, &tl) ||
         !TIFFGetField(out, TIFFTAG_TILEWIDTH, &tw) ||
@@ -1628,13 +1628,13 @@ static void processG3Options(char *cp)
 {
     if ((cp = strchr(cp, ':')))
     {
-        if (defg3opts == (uint32_t)-1)
+        if (defg3opts == UINT32_MAX)
             defg3opts = 0;
         do
         {
             cp++;
             if (strneq(cp, "1d", 2))
-                defg3opts &= ~GROUP3OPT_2DENCODING;
+                defg3opts &= (uint32_t)~GROUP3OPT_2DENCODING;
             else if (strneq(cp, "2d", 2))
                 defg3opts |= GROUP3OPT_2DENCODING;
             else if (strneq(cp, "fill", 4))
@@ -1793,6 +1793,18 @@ static void cpTag(TIFF *in, TIFF *out, uint16_t tag, uint16_t count,
                 CopyField(tag, doubleav);
             }
             break;
+        case TIFF_NOTYPE:
+        case TIFF_BYTE:
+        case TIFF_SBYTE:
+        case TIFF_UNDEFINED:
+        case TIFF_SSHORT:
+        case TIFF_SLONG:
+        case TIFF_SRATIONAL:
+        case TIFF_FLOAT:
+        case TIFF_IFD:
+        case TIFF_LONG8:
+        case TIFF_SLONG8:
+        case TIFF_IFD8:
         default:
             TIFFError(TIFFFileName(in),
                       "Data type %u is not supported, tag %u skipped",
@@ -1883,7 +1895,7 @@ void process_command_opts(int argc, char *argv[], char *mp, char *mode,
                 }
                 break;
             case 'd':
-                start = strtoul(optarg, NULL, 0); /* initial IFD offset */
+                start = (unsigned int)strtoul(optarg, NULL, 0); /* initial IFD offset */
                 if (start == 0)
                 {
                     TIFFError("", "Directory offset must be greater than zero");
@@ -1944,7 +1956,7 @@ void process_command_opts(int argc, char *argv[], char *mp, char *mode,
                 break;
             case 'l':
                 outtiled = TRUE; /* tile length */
-                *deftilelength = atoi(optarg);
+                *deftilelength = (uint32_t)atoi(optarg);
                 break;
             case 'p': /* planar configuration */
                 if (streq(optarg, "separate"))
@@ -1959,7 +1971,7 @@ void process_command_opts(int argc, char *argv[], char *mp, char *mode,
                 }
                 break;
             case 'r': /* rows/strip */
-                *defrowsperstrip = atol(optarg);
+                *defrowsperstrip = (uint32_t)atol(optarg);
                 break;
             case 's': /* generate stripped output */
                 outtiled = FALSE;
@@ -1978,7 +1990,7 @@ void process_command_opts(int argc, char *argv[], char *mp, char *mode,
                 break;
             case 'w': /* tile width */
                 outtiled = TRUE;
-                *deftilewidth = atoi(optarg);
+                *deftilewidth = (uint32_t)atoi(optarg);
                 break;
             case 'z': /* regions of an image specified as
                          x1,y1,x2,y2:x3,y3,x4,y4 etc */
@@ -2296,15 +2308,15 @@ void process_command_opts(int argc, char *argv[], char *mp, char *mode,
                             {
                                 sep = strpbrk(opt_ptr, ":-");
                                 if (!sep)
-                                    imagelist[i++] = atoi(opt_ptr);
+                                    imagelist[i++] = (unsigned int)atoi(opt_ptr);
                                 else
                                 {
                                     *sep = '\0';
-                                    start = atoi(opt_ptr);
+                                    start = (unsigned int)atoi(opt_ptr);
                                     if (!strcmp((sep + 1), "last"))
                                         end = MAX_IMAGES;
                                     else
-                                        end = atoi(sep + 1);
+                                        end = (unsigned int)atoi(sep + 1);
                                     for (j = start;
                                          j <= end && j - start + i < MAX_IMAGES;
                                          j++)
@@ -2397,13 +2409,13 @@ void process_command_opts(int argc, char *argv[], char *mp, char *mode,
                 if (sep)
                 {
                     *sep = '\0';
-                    page->cols = atoi(optarg);
-                    page->rows = atoi(sep + 1);
+                    page->cols = (unsigned int)atoi(optarg);
+                    page->rows = (unsigned int)atoi(sep + 1);
                 }
                 else
                 {
-                    page->cols = atoi(optarg);
-                    page->rows = atoi(optarg);
+                    page->cols = (unsigned int)atoi(optarg);
+                    page->rows = (unsigned int)atoi(optarg);
                 }
                 if ((page->cols * page->rows) > MAX_SECTIONS)
                 {
@@ -2485,6 +2497,8 @@ void process_command_opts(int argc, char *argv[], char *mp, char *mode,
                 TIFFError("For valid options type", "tiffcrop -h");
                 exit(EXIT_FAILURE);
                 /*NOTREACHED*/
+            default:
+                break;
         }
     }
     /*-- Check for not allowed combinations (e.g. -X, -Y and -Z, -z and -S are
@@ -2870,7 +2884,7 @@ int main(int argc, char *argv[])
                     if (writeCroppedImage(in, out, &image, &dump,
                                           crop.combined_width,
                                           crop.combined_length, crop_buff,
-                                          next_page, total_pages))
+                                          (int)next_page, (int)total_pages))
                     {
                         TIFFError("main", "Unable to write new image");
                         retval = EXIT_FAILURE;
@@ -2980,7 +2994,7 @@ failure:
 } /* end main */
 
 /* Debugging functions */
-static int dump_data(FILE *dumpfile, int format, char *dump_tag,
+static int dump_data(FILE *dumpfile, int format, const char *dump_tag,
                      unsigned char *data, uint32_t count)
 {
     int j, k;
@@ -3021,7 +3035,7 @@ static int dump_data(FILE *dumpfile, int format, char *dump_tag,
     return (0);
 }
 
-static int dump_byte(FILE *dumpfile, int format, char *dump_tag,
+static int dump_byte(FILE *dumpfile, int format, const char *dump_tag,
                      unsigned char data)
 {
     int j, k;
@@ -3057,7 +3071,8 @@ static int dump_byte(FILE *dumpfile, int format, char *dump_tag,
     return (0);
 }
 
-static int dump_short(FILE *dumpfile, int format, char *dump_tag, uint16_t data)
+static int dump_short(FILE *dumpfile, int format, const char *dump_tag,
+                      uint16_t data)
 {
     int j, k;
     char dump_array[20];
@@ -3094,7 +3109,8 @@ static int dump_short(FILE *dumpfile, int format, char *dump_tag, uint16_t data)
     return (0);
 }
 
-static int dump_long(FILE *dumpfile, int format, char *dump_tag, uint32_t data)
+static int dump_long(FILE *dumpfile, int format, const char *dump_tag,
+                     uint32_t data)
 {
     int j, k;
     char dump_array[40];
@@ -3130,7 +3146,8 @@ static int dump_long(FILE *dumpfile, int format, char *dump_tag, uint32_t data)
     return (0);
 }
 
-static int dump_wide(FILE *dumpfile, int format, char *dump_tag, uint64_t data)
+static int dump_wide(FILE *dumpfile, int format, const char *dump_tag,
+                     uint64_t data)
 {
     int j, k;
     char dump_array[80];
@@ -3167,7 +3184,8 @@ static int dump_wide(FILE *dumpfile, int format, char *dump_tag, uint64_t data)
     return (0);
 }
 
-static void dump_info(FILE *dumpfile, int format, char *prefix, char *msg, ...)
+static void dump_info(FILE *dumpfile, int format, const char *prefix,
+                      const char *msg, ...)
 {
     if (format == DUMP_TEXT)
     {
@@ -3213,10 +3231,10 @@ static int dump_buffer(FILE *dumpfile, int format, uint32_t rows,
                       "Row %4" PRIu32 ", %" PRIu32 " bytes at offset %" PRIu32,
                       row + i + 1u, width, row * width);
 
-        for (k = width; k >= 10; k -= 10, dump_ptr += 10)
+        for (k = (int)width; k >= 10; k -= 10, dump_ptr += 10)
             dump_data(dumpfile, format, "", dump_ptr, 10);
         if (k > 0)
-            dump_data(dumpfile, format, "", dump_ptr, k);
+            dump_data(dumpfile, format, "", dump_ptr, (uint32_t)k);
     }
     return (0);
 }
@@ -3271,13 +3289,13 @@ static int extractContigSamplesBytes(uint8_t *in, uint8_t *out, uint32_t cols,
         end = start + numcols;
     }
 
-    dst_rowsize = (bps * (end - start) * count) / 8;
+    dst_rowsize = (uint32_t)((bps * (end - start) * count) / 8);
 
-    bytes_per_sample = (bps + 7) / 8;
+    bytes_per_sample = (int)((bps + 7) / 8);
     /* Optimize case for copying all samples */
     if (count == spp)
     {
-        src = in + (start * spp * bytes_per_sample);
+        src = in + (uint32_t)(start * spp * (uint32_t)bytes_per_sample);
         _TIFFmemcpy(dst, src, dst_rowsize);
     }
     else
@@ -3295,7 +3313,7 @@ static int extractContigSamplesBytes(uint8_t *in, uint8_t *out, uint32_t cols,
                 }
                 else
                 {
-                    src_byte = (bit_offset + (sindex * bps)) / 8;
+                    src_byte = (uint32_t)((bit_offset + ((uint32_t)sindex * bps)) / 8);
                     /* src_bit  = (bit_offset + (sindex * bps)) % 8; */
                 }
                 src = in + src_byte;
@@ -3369,13 +3387,13 @@ static int extractContigSamples8bits(uint8_t *in, uint8_t *out, uint32_t cols,
             }
             else
             {
-                src_byte = (bit_offset + (sindex * bps)) / 8;
-                src_bit = (bit_offset + (sindex * bps)) % 8;
+                src_byte = (bit_offset + ((uint32_t)sindex * bps)) / 8;
+                src_bit = (bit_offset + ((uint32_t)sindex * bps)) % 8;
             }
 
             src = in + src_byte;
-            matchbits = maskbits << (8 - src_bit - bps);
-            buff1 = ((*src) & matchbits) << (src_bit);
+            matchbits = (uint8_t)(maskbits << (8 - src_bit - bps));
+            buff1 = (uint8_t)(((*src) & matchbits) << (src_bit));
 
             /* If we have a full buffer's worth, write it out */
             if (ready_bits >= 8)
@@ -3462,30 +3480,30 @@ static int extractContigSamples16bits(uint8_t *in, uint8_t *out, uint32_t cols,
             }
             else
             {
-                src_byte = (bit_offset + (sindex * bps)) / 8;
-                src_bit = (bit_offset + (sindex * bps)) % 8;
+                src_byte = (bit_offset + ((uint32_t)sindex * bps)) / 8;
+                src_bit = (bit_offset + ((uint32_t)sindex * bps)) % 8;
             }
 
             src = in + src_byte;
-            matchbits = maskbits << (16 - src_bit - bps);
+            matchbits = (uint16_t)(maskbits << (16 - src_bit - bps));
 
             if (little_endian)
-                buff1 = (src[0] << 8) | src[1];
+                buff1 = (uint16_t)((src[0] << 8) | src[1]);
             else
-                buff1 = (src[1] << 8) | src[0];
+                buff1 = (uint16_t)((src[1] << 8) | src[0]);
 
-            buff1 = (buff1 & matchbits) << (src_bit);
+            buff1 = (uint16_t)((buff1 & matchbits) << (src_bit));
             if (ready_bits < 8) /* add another bps bits to the buffer */
             {
                 buff2 = (buff2 | (buff1 >> ready_bits));
             }
             else /* If we have a full buffer's worth, write it out */
             {
-                bytebuff = (buff2 >> 8);
+                bytebuff = (uint8_t)(buff2 >> 8);
                 *dst++ = bytebuff;
                 ready_bits -= 8;
                 /* shift in new bits */
-                buff2 = ((buff2 << 8) | (buff1 >> ready_bits));
+                buff2 = (uint16_t)((buff2 << 8) | (buff1 >> ready_bits));
             }
             ready_bits += bps;
         }
@@ -3494,7 +3512,7 @@ static int extractContigSamples16bits(uint8_t *in, uint8_t *out, uint32_t cols,
     /* catch any trailing bits at the end of the line */
     while (ready_bits > 0)
     {
-        bytebuff = (buff2 >> 8);
+        bytebuff = (uint8_t)(buff2 >> 8);
         *dst++ = bytebuff;
         ready_bits -= 8;
     }
@@ -3564,31 +3582,31 @@ static int extractContigSamples24bits(uint8_t *in, uint8_t *out, uint32_t cols,
             }
             else
             {
-                src_byte = (bit_offset + (sindex * bps)) / 8;
-                src_bit = (bit_offset + (sindex * bps)) % 8;
+                src_byte = (bit_offset + ((uint32_t)sindex * bps)) / 8;
+                src_bit = (bit_offset + ((uint32_t)sindex * bps)) % 8;
             }
 
             src = in + src_byte;
             matchbits = maskbits << (32 - src_bit - bps);
             if (little_endian)
             {
-                buff1 = (src[0] << 24);
+                buff1 = (uint32_t)(src[0] << 24);
                 if (matchbits & 0x00ff0000)
-                    buff1 |= (src[1] << 16);
+                    buff1 |= (uint32_t)(src[1] << 16);
                 if (matchbits & 0x0000ff00)
-                    buff1 |= (src[2] << 8);
+                    buff1 |= (uint32_t)(src[2] << 8);
                 if (matchbits & 0x000000ff)
-                    buff1 |= src[3];
+                    buff1 |= (uint32_t)src[3];
             }
             else
             {
-                buff1 = src[0];
+                buff1 = (uint32_t)src[0];
                 if (matchbits & 0x0000ff00)
-                    buff1 |= (src[1] << 8);
+                    buff1 |= (uint32_t)(src[1] << 8);
                 if (matchbits & 0x00ff0000)
-                    buff1 |= (src[2] << 16);
+                    buff1 |= (uint32_t)(src[2] << 16);
                 if (matchbits & 0xff000000)
-                    buff1 |= (src[3] << 24);
+                    buff1 |= (uint32_t)(src[3] << 24);
             }
             buff1 = (buff1 & matchbits) << (src_bit);
 
@@ -3614,7 +3632,7 @@ static int extractContigSamples24bits(uint8_t *in, uint8_t *out, uint32_t cols,
     /* catch any trailing bits at the end of the line */
     while (ready_bits > 0)
     {
-        bytebuff1 = (buff2 >> 24);
+        bytebuff1 = (uint8_t)(buff2 >> 24);
         *dst++ = bytebuff1;
 
         buff2 = (buff2 << 8);
@@ -3689,8 +3707,8 @@ static int extractContigSamples32bits(uint8_t *in, uint8_t *out, uint32_t cols,
             }
             else
             {
-                src_byte = (bit_offset + (sindex * bps)) / 8;
-                src_bit = (bit_offset + (sindex * bps)) % 8;
+                src_byte = (bit_offset + ((uint32_t)sindex * bps)) / 8;
+                src_bit = (bit_offset + ((uint32_t)sindex * bps)) % 8;
             }
 
             src = in + src_byte;
@@ -3698,13 +3716,13 @@ static int extractContigSamples32bits(uint8_t *in, uint8_t *out, uint32_t cols,
             if (little_endian)
             {
                 longbuff1 =
-                    (src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3];
+                    (uint32_t)((src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3]);
                 longbuff2 = longbuff1;
             }
             else
             {
                 longbuff1 =
-                    (src[3] << 24) | (src[2] << 16) | (src[1] << 8) | src[0];
+                    (uint32_t)((src[3] << 24) | (src[2] << 16) | (src[1] << 8) | src[0]);
                 longbuff2 = longbuff1;
             }
 
@@ -3736,7 +3754,7 @@ static int extractContigSamples32bits(uint8_t *in, uint8_t *out, uint32_t cols,
     }
     while (ready_bits > 0)
     {
-        bytebuff1 = (buff2 >> 56);
+        bytebuff1 = (uint8_t)(buff2 >> 56);
         *dst++ = bytebuff1;
         buff2 = (buff2 << 8);
         ready_bits -= 8;
@@ -3807,13 +3825,13 @@ static int extractContigSamplesShifted8bits(uint8_t *in, uint8_t *out,
             }
             else
             {
-                src_byte = (bit_offset + (sindex * bps)) / 8;
-                src_bit = (bit_offset + (sindex * bps)) % 8;
+                src_byte = (bit_offset + ((uint32_t)sindex * bps)) / 8;
+                src_bit = (bit_offset + ((uint32_t)sindex * bps)) % 8;
             }
 
             src = in + src_byte;
-            matchbits = maskbits << (8 - src_bit - bps);
-            buff1 = ((*src) & matchbits) << (src_bit);
+            matchbits = (uint8_t)(maskbits << (8 - src_bit - bps));
+            buff1 = (uint8_t)(((*src) & matchbits) << (src_bit));
             if ((col == start) && (sindex == sample))
                 buff2 = *src & ((uint8_t)-1) << (shift);
 
@@ -3902,31 +3920,31 @@ static int extractContigSamplesShifted16bits(uint8_t *in, uint8_t *out,
             }
             else
             {
-                src_byte = (bit_offset + (sindex * bps)) / 8;
-                src_bit = (bit_offset + (sindex * bps)) % 8;
+                src_byte = (bit_offset + ((uint32_t)sindex * bps)) / 8;
+                src_bit = (bit_offset + ((uint32_t)sindex * bps)) % 8;
             }
 
             src = in + src_byte;
-            matchbits = maskbits << (16 - src_bit - bps);
+            matchbits = (uint16_t)(maskbits << (16 - src_bit - bps));
             if (little_endian)
-                buff1 = (src[0] << 8) | src[1];
+                buff1 = (uint16_t)((src[0] << 8) | src[1]);
             else
-                buff1 = (src[1] << 8) | src[0];
+                buff1 = (uint16_t)((src[1] << 8) | src[0]);
 
             if ((col == start) && (sindex == sample))
                 buff2 = buff1 & ((uint16_t)-1) << (8 - shift);
 
-            buff1 = (buff1 & matchbits) << (src_bit);
+            buff1 = (uint16_t)((buff1 & matchbits) << (src_bit));
 
             if (ready_bits < 8) /* add another bps bits to the buffer */
                 buff2 = buff2 | (buff1 >> ready_bits);
             else /* If we have a full buffer's worth, write it out */
             {
-                bytebuff = (buff2 >> 8);
+                bytebuff = (uint8_t)(buff2 >> 8);
                 *dst++ = bytebuff;
                 ready_bits -= 8;
                 /* shift in new bits */
-                buff2 = ((buff2 << 8) | (buff1 >> ready_bits));
+                buff2 = (uint16_t)((buff2 << 8) | (buff1 >> ready_bits));
             }
 
             ready_bits += bps;
@@ -3936,7 +3954,7 @@ static int extractContigSamplesShifted16bits(uint8_t *in, uint8_t *out,
     /* catch any trailing bits at the end of the line */
     while (ready_bits > 0)
     {
-        bytebuff = (buff2 >> 8);
+        bytebuff = (uint8_t)(buff2 >> 8);
         *dst++ = bytebuff;
         ready_bits -= 8;
     }
@@ -4016,18 +4034,18 @@ static int extractContigSamplesShifted24bits(uint8_t *in, uint8_t *out,
             }
             else
             {
-                src_byte = (bit_offset + (sindex * bps)) / 8;
-                src_bit = (bit_offset + (sindex * bps)) % 8;
+                src_byte = (bit_offset + ((uint32_t)sindex * bps)) / 8;
+                src_bit = (bit_offset + ((uint32_t)sindex * bps)) % 8;
             }
 
             src = in + src_byte;
             matchbits = maskbits << (32 - src_bit - bps);
             if (little_endian)
                 buff1 =
-                    (src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3];
+                    (uint32_t)((src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3]);
             else
                 buff1 =
-                    (src[3] << 24) | (src[2] << 16) | (src[1] << 8) | src[0];
+                    (uint32_t)((src[3] << 24) | (src[2] << 16) | (src[1] << 8) | src[0]);
 
             if ((col == start) && (sindex == sample))
                 buff2 = buff1 & ((uint32_t)-1) << (16 - shift);
@@ -4056,7 +4074,7 @@ static int extractContigSamplesShifted24bits(uint8_t *in, uint8_t *out,
     /* catch any trailing bits at the end of the line */
     while (ready_bits > 0)
     {
-        bytebuff1 = (buff2 >> 24);
+        bytebuff1 = (uint8_t)(buff2 >> 24);
         *dst++ = bytebuff1;
 
         buff2 = (buff2 << 8);
@@ -4132,8 +4150,8 @@ static int extractContigSamplesShifted32bits(uint8_t *in, uint8_t *out,
             }
             else
             {
-                src_byte = (bit_offset + (sindex * bps)) / 8;
-                src_bit = (bit_offset + (sindex * bps)) % 8;
+                src_byte = (bit_offset + ((uint32_t)sindex * bps)) / 8;
+                src_bit = (bit_offset + ((uint32_t)sindex * bps)) % 8;
             }
 
             src = in + src_byte;
@@ -4141,13 +4159,13 @@ static int extractContigSamplesShifted32bits(uint8_t *in, uint8_t *out,
             if (little_endian)
             {
                 longbuff1 =
-                    (src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3];
+                    (uint32_t)((src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3]);
                 longbuff2 = longbuff1;
             }
             else
             {
                 longbuff1 =
-                    (src[3] << 24) | (src[2] << 16) | (src[1] << 8) | src[0];
+                    (uint32_t)((src[3] << 24) | (src[2] << 16) | (src[1] << 8) | src[0]);
                 longbuff2 = longbuff1;
             }
 
@@ -4181,7 +4199,7 @@ static int extractContigSamplesShifted32bits(uint8_t *in, uint8_t *out,
     }
     while (ready_bits > 0)
     {
-        bytebuff1 = (buff2 >> 56);
+        bytebuff1 = (uint8_t)(buff2 >> 56);
         *dst++ = bytebuff1;
         buff2 = (buff2 << 8);
         ready_bits -= 8;
@@ -4201,8 +4219,8 @@ static int extractContigSamplesToBuffer(uint8_t *out, uint8_t *in,
     tsample_t count = 1;
     uint8_t *src, *dst;
 
-    bytes_per_sample = (bps + 7) / 8;
-    bytes_per_pixel = ((bps * spp) + 7) / 8;
+    bytes_per_sample = (int)((bps + 7) / 8);
+    bytes_per_pixel = (int)(((bps * spp) + 7) / 8);
     if ((bps % 8) == 0)
         shift_width = 0;
     else
@@ -4283,8 +4301,8 @@ static int extractContigSamplesToTileBuffer(
     uint32_t dst_rowsize, dst_offset;
     uint8_t *src, *dst;
 
-    bytes_per_sample = (bps + 7) / 8;
-    bytes_per_pixel = ((bps * spp) + 7) / 8;
+    bytes_per_sample = (int)((bps + 7) / 8);
+    bytes_per_pixel = (int)(((bps * spp) + 7) / 8);
     if ((bps % 8) == 0)
         shift_width = 0;
     else
@@ -4498,12 +4516,12 @@ static int combineSeparateSamples8bits(uint8_t *in[], uint8_t *out,
             src_byte = bit_offset / 8;
             src_bit = bit_offset % 8;
 
-            matchbits = maskbits << (8 - src_bit - bps);
+            matchbits = (uint8_t)(maskbits << (8 - src_bit - bps));
             /* load up next sample from each plane */
             for (s = 0; (s < spp) && (s < MAX_SAMPLES); s++)
             {
                 src = in[s] + src_offset + src_byte;
-                buff1 = ((*src) & matchbits) << (src_bit);
+                buff1 = (uint8_t)(((*src) & matchbits) << (src_bit));
 
                 /* If we have a full buffer's worth, write it out */
                 if (ready_bits >= 8)
@@ -4606,25 +4624,25 @@ static int combineSeparateSamples16bits(uint8_t *in[], uint8_t *out,
             src_byte = bit_offset / 8;
             src_bit = bit_offset % 8;
 
-            matchbits = maskbits << (16 - src_bit - bps);
+            matchbits = (uint16_t)(maskbits << (16 - src_bit - bps));
             for (s = 0; (s < spp) && (s < MAX_SAMPLES); s++)
             {
                 src = in[s] + src_offset + src_byte;
                 if (little_endian)
-                    buff1 = (src[0] << 8) | src[1];
+                    buff1 = (uint16_t)((src[0] << 8) | src[1]);
                 else
-                    buff1 = (src[1] << 8) | src[0];
+                    buff1 = (uint16_t)((src[1] << 8) | src[0]);
 
-                buff1 = (buff1 & matchbits) << (src_bit);
+                buff1 = (uint16_t)((buff1 & matchbits) << (src_bit));
 
                 /* If we have a full buffer's worth, write it out */
                 if (ready_bits >= 8)
                 {
-                    bytebuff = (buff2 >> 8);
+                    bytebuff = (uint8_t)(buff2 >> 8);
                     *dst++ = bytebuff;
                     ready_bits -= 8;
                     /* shift in new bits */
-                    buff2 = ((buff2 << 8) | (buff1 >> ready_bits));
+                    buff2 = (uint16_t)((buff2 << 8) | (buff1 >> ready_bits));
                     strcpy(action, "Flush");
                 }
                 else
@@ -4658,7 +4676,7 @@ static int combineSeparateSamples16bits(uint8_t *in[], uint8_t *out,
         /* catch any trailing bits at the end of the line */
         if (ready_bits > 0)
         {
-            bytebuff = (buff2 >> 8);
+            bytebuff = (uint8_t)(buff2 >> 8);
             *dst++ = bytebuff;
             if ((dumpfile != NULL) && (level == 3))
             {
@@ -4782,7 +4800,7 @@ static int combineSeparateSamples24bits(uint8_t *in[], uint8_t *out,
         /* catch any trailing bits at the end of the line */
         while (ready_bits > 0)
         {
-            bytebuff1 = (buff2 >> 24);
+            bytebuff1 = (uint8_t)(buff2 >> 24);
             *dst++ = bytebuff1;
 
             buff2 = (buff2 << 8);
@@ -4868,14 +4886,14 @@ static int combineSeparateSamples32bits(uint8_t *in[], uint8_t *out,
                 src = in[s] + src_offset + src_byte;
                 if (little_endian)
                 {
-                    longbuff1 = (src[0] << 24) | (src[1] << 16) |
-                                (src[2] << 8) | src[3];
+                    longbuff1 = (uint32_t)((src[0] << 24) | (src[1] << 16) |
+                                (src[2] << 8) | src[3]);
                     longbuff2 = longbuff1;
                 }
                 else
                 {
-                    longbuff1 = (src[3] << 24) | (src[2] << 16) |
-                                (src[1] << 8) | src[0];
+                    longbuff1 = (uint32_t)((src[3] << 24) | (src[2] << 16) |
+                                (src[1] << 8) | src[0]);
                     longbuff2 = longbuff1;
                 }
                 buff3 = ((uint64_t)longbuff1 << 32) | longbuff2;
@@ -4925,7 +4943,7 @@ static int combineSeparateSamples32bits(uint8_t *in[], uint8_t *out,
         }
         while (ready_bits > 0)
         {
-            bytebuff1 = (buff2 >> 56);
+            bytebuff1 = (uint8_t)(buff2 >> 56);
             *dst++ = bytebuff1;
             buff2 = (buff2 << 8);
             ready_bits -= 8;
@@ -4981,7 +4999,7 @@ static int combineSeparateTileSamplesBytes(unsigned char *srcbuffs[],
 
     bytes_per_sample = (bps + 7) / 8;
     src_rowsize = ((bps * tw) + 7) / 8;
-    dst_rowsize = imagewidth * bytes_per_sample * spp;
+    dst_rowsize = (uint32_t)imagewidth * (uint32_t)bytes_per_sample * spp;
     for (row = 0; row < rows; row++)
     {
         if ((dumpfile != NULL) && (level == 2))
@@ -5066,12 +5084,12 @@ static int combineSeparateTileSamples8bits(uint8_t *in[], uint8_t *out,
             src_byte = bit_offset / 8;
             src_bit = bit_offset % 8;
 
-            matchbits = maskbits << (8 - src_bit - bps);
+            matchbits = (uint8_t)(maskbits << (8 - src_bit - bps));
             /* load up next sample from each plane */
             for (s = 0; (s < spp) && (s < MAX_SAMPLES); s++)
             {
                 src = in[s] + src_offset + src_byte;
-                buff1 = ((*src) & matchbits) << (src_bit);
+                buff1 = (uint8_t)(((*src) & matchbits) << (src_bit));
 
                 /* If we have a full buffer's worth, write it out */
                 if (ready_bits >= 8)
@@ -5174,24 +5192,24 @@ static int combineSeparateTileSamples16bits(uint8_t *in[], uint8_t *out,
             src_byte = bit_offset / 8;
             src_bit = bit_offset % 8;
 
-            matchbits = maskbits << (16 - src_bit - bps);
+            matchbits = (uint16_t)(maskbits << (16 - src_bit - bps));
             for (s = 0; (s < spp) && (s < MAX_SAMPLES); s++)
             {
                 src = in[s] + src_offset + src_byte;
                 if (little_endian)
-                    buff1 = (src[0] << 8) | src[1];
+                    buff1 = (uint16_t)((src[0] << 8) | src[1]);
                 else
-                    buff1 = (src[1] << 8) | src[0];
-                buff1 = (buff1 & matchbits) << (src_bit);
+                    buff1 = (uint16_t)((src[1] << 8) | src[0]);
+                buff1 = (uint16_t)((buff1 & matchbits) << (src_bit));
 
                 /* If we have a full buffer's worth, write it out */
                 if (ready_bits >= 8)
                 {
-                    bytebuff = (buff2 >> 8);
+                    bytebuff = (uint8_t)(buff2 >> 8);
                     *dst++ = bytebuff;
                     ready_bits -= 8;
                     /* shift in new bits */
-                    buff2 = ((buff2 << 8) | (buff1 >> ready_bits));
+                    buff2 = (uint16_t)((buff2 << 8) | (buff1 >> ready_bits));
                     strcpy(action, "Flush");
                 }
                 else
@@ -5225,7 +5243,7 @@ static int combineSeparateTileSamples16bits(uint8_t *in[], uint8_t *out,
         /* catch any trailing bits at the end of the line */
         if (ready_bits > 0)
         {
-            bytebuff = (buff2 >> 8);
+            bytebuff = (uint8_t)(buff2 >> 8);
             *dst++ = bytebuff;
             if ((dumpfile != NULL) && (level == 3))
             {
@@ -5297,11 +5315,11 @@ static int combineSeparateTileSamples24bits(uint8_t *in[], uint8_t *out,
             {
                 src = in[s] + src_offset + src_byte;
                 if (little_endian)
-                    buff1 = (src[0] << 24) | (src[1] << 16) | (src[2] << 8) |
-                            src[3];
+                    buff1 = (uint32_t)((src[0] << 24) | (src[1] << 16) | (src[2] << 8) |
+                            src[3]);
                 else
-                    buff1 = (src[3] << 24) | (src[2] << 16) | (src[1] << 8) |
-                            src[0];
+                    buff1 = (uint32_t)((src[3] << 24) | (src[2] << 16) | (src[1] << 8) |
+                            src[0]);
                 buff1 = (buff1 & matchbits) << (src_bit);
 
                 /* If we have a full buffer's worth, write it out */
@@ -5348,7 +5366,7 @@ static int combineSeparateTileSamples24bits(uint8_t *in[], uint8_t *out,
         /* catch any trailing bits at the end of the line */
         while (ready_bits > 0)
         {
-            bytebuff1 = (buff2 >> 24);
+            bytebuff1 = (uint8_t)(buff2 >> 24);
             *dst++ = bytebuff1;
 
             buff2 = (buff2 << 8);
@@ -5435,14 +5453,14 @@ static int combineSeparateTileSamples32bits(uint8_t *in[], uint8_t *out,
                 src = in[s] + src_offset + src_byte;
                 if (little_endian)
                 {
-                    longbuff1 = (src[0] << 24) | (src[1] << 16) |
-                                (src[2] << 8) | src[3];
+                    longbuff1 = (uint32_t)((src[0] << 24) | (src[1] << 16) |
+                                (src[2] << 8) | src[3]);
                     longbuff2 = longbuff1;
                 }
                 else
                 {
-                    longbuff1 = (src[3] << 24) | (src[2] << 16) |
-                                (src[1] << 8) | src[0];
+                    longbuff1 = (uint32_t)((src[3] << 24) | (src[2] << 16) |
+                                (src[1] << 8) | src[0]);
                     longbuff2 = longbuff1;
                 }
 
@@ -5493,7 +5511,7 @@ static int combineSeparateTileSamples32bits(uint8_t *in[], uint8_t *out,
         }
         while (ready_bits > 0)
         {
-            bytebuff1 = (buff2 >> 56);
+            bytebuff1 = (uint8_t)(buff2 >> 56);
             *dst++ = bytebuff1;
             buff2 = (buff2 << 8);
             ready_bits -= 8;
@@ -5559,12 +5577,12 @@ static int readSeparateStripsIntoBuffer(TIFF *in, uint8_t *obuf,
     if (rps > length)
         rps = length;
 
-    bytes_per_sample = (bps + 7) / 8;
-    bytes_per_pixel = ((bps * spp) + 7) / 8;
+    bytes_per_sample = (int)((bps + 7) / 8);
+    bytes_per_pixel = (int)(((bps * spp) + 7) / 8);
     if (bytes_per_pixel < (bytes_per_sample + 1))
         shift_width = bytes_per_pixel;
     else
-        shift_width = bytes_per_sample + 1;
+        shift_width = (int)(bytes_per_sample + 1);
 
     src_rowsize = ((bps * width) + 7) / 8;
     dst_rowsize = ((bps * width * spp) + 7) / 8;
@@ -6302,8 +6320,8 @@ static int getCropOffsets(struct image_data *image, struct crop_mask *crop,
     i = 0;
     for (int j = 0; j < crop->zones; j++)
     {
-        seg = crop->zonelist[j].position;
-        total = crop->zonelist[j].total;
+        seg = (uint32_t)crop->zonelist[j].position;
+        total = (uint32_t)crop->zonelist[j].total;
 
         /* check for not allowed zone cases like 0:0; 4:3; or negative ones etc.
          * and skip that input */
@@ -6865,8 +6883,8 @@ static int computeOutputPixelOffsets(struct crop_mask *crop,
             sections[k].y1 = y1;
             sections[k].y2 = y2;
             sections[k].buffsize = line_bytes * olength;
-            sections[k].position = k + 1;
-            sections[k].total = orows * ocols;
+            sections[k].position = (int)(k + 1);
+            sections[k].total = (int)(orows * ocols);
         }
     }
     return (0);
@@ -7406,8 +7424,8 @@ static int extractCompositeRegions(struct image_data *image,
     spp = image->spp;
     count = spp;
 
-    bytes_per_sample = (bps + 7) / 8;
-    bytes_per_pixel = ((bps * spp) + 7) / 8;
+    bytes_per_sample = (int)((bps + 7) / 8);
+    bytes_per_pixel = (int)(((bps * spp) + 7) / 8);
     if ((bps % 8) == 0)
         shift_width = 0;
     else
@@ -7527,7 +7545,7 @@ static int extractCompositeRegions(struct image_data *image,
                                 if (extractContigSamplesShifted8bits(
                                         src, dst, img_width, sample, spp, bps,
                                         count, first_col, last_col + 1,
-                                        prev_trailing_bits))
+                                        (int)prev_trailing_bits))
                                 {
                                     TIFFError("extractCompositeRegions",
                                               "Unable to extract row %" PRIu32,
@@ -7539,7 +7557,7 @@ static int extractCompositeRegions(struct image_data *image,
                             else if (extractContigSamplesShifted16bits(
                                          src, dst, img_width, sample, spp, bps,
                                          count, first_col, last_col + 1,
-                                         prev_trailing_bits))
+                                         (int)prev_trailing_bits))
                             {
                                 TIFFError("extractCompositeRegions",
                                           "Unable to extract row %" PRIu32,
@@ -7551,7 +7569,7 @@ static int extractCompositeRegions(struct image_data *image,
                             if (extractContigSamplesShifted24bits(
                                     src, dst, img_width, sample, spp, bps,
                                     count, first_col, last_col + 1,
-                                    prev_trailing_bits))
+                                    (int)prev_trailing_bits))
                             {
                                 TIFFError("extractCompositeRegions",
                                           "Unable to extract row %" PRIu32,
@@ -7565,7 +7583,7 @@ static int extractCompositeRegions(struct image_data *image,
                             if (extractContigSamplesShifted32bits(
                                     src, dst, img_width, sample, spp, bps,
                                     count, first_col, last_col + 1,
-                                    prev_trailing_bits))
+                                    (int)prev_trailing_bits))
                             {
                                 TIFFError("extractCompositeRegions",
                                           "Unable to extract row %" PRIu32,
@@ -7622,7 +7640,7 @@ static int extractCompositeRegions(struct image_data *image,
                                 if (extractContigSamplesShifted8bits(
                                         src, dst, img_width, sample, spp, bps,
                                         count, first_col, last_col + 1,
-                                        prev_trailing_bits))
+                                        (int)prev_trailing_bits))
                                 {
                                     TIFFError("extractCompositeRegions",
                                               "Unable to extract row %" PRIu32,
@@ -7634,7 +7652,7 @@ static int extractCompositeRegions(struct image_data *image,
                             else if (extractContigSamplesShifted16bits(
                                          src, dst, img_width, sample, spp, bps,
                                          count, first_col, last_col + 1,
-                                         prev_trailing_bits))
+                                         (int)prev_trailing_bits))
                             {
                                 TIFFError("extractCompositeRegions",
                                           "Unable to extract row %" PRIu32,
@@ -7646,7 +7664,7 @@ static int extractCompositeRegions(struct image_data *image,
                             if (extractContigSamplesShifted24bits(
                                     src, dst, img_width, sample, spp, bps,
                                     count, first_col, last_col + 1,
-                                    prev_trailing_bits))
+                                    (int)prev_trailing_bits))
                             {
                                 TIFFError("extractCompositeRegions",
                                           "Unable to extract row %" PRIu32,
@@ -7660,7 +7678,7 @@ static int extractCompositeRegions(struct image_data *image,
                             if (extractContigSamplesShifted32bits(
                                     src, dst, img_width, sample, spp, bps,
                                     count, first_col, last_col + 1,
-                                    prev_trailing_bits))
+                                    (int)prev_trailing_bits))
                             {
                                 TIFFError("extractCompositeRegions",
                                           "Unable to extract row %" PRIu32,
@@ -7720,16 +7738,16 @@ static int extractSeparateRegion(struct image_data *image,
     spp = image->spp;
     count = spp;
 
-    bytes_per_sample = (bps + 7) / 8;
-    bytes_per_pixel = ((bps * spp) + 7) / 8;
+    bytes_per_sample = (uint32_t)((bps + 7) / 8);
+    bytes_per_pixel = (uint32_t)(((bps * spp) + 7) / 8);
     if ((bps % 8) == 0)
         shift_width = 0; /* Byte aligned data only */
     else
     {
         if (bytes_per_pixel < (bytes_per_sample + 1))
-            shift_width = bytes_per_pixel;
+            shift_width = (int)bytes_per_pixel;
         else
-            shift_width = bytes_per_sample + 1;
+            shift_width = (int)(bytes_per_sample + 1);
     }
 
     /* rows, columns, width, length are expressed in pixels */
@@ -8062,7 +8080,7 @@ static int extractImageSection(struct image_data *image,
                     bytebuff2 = src_buff[offset1 + j + 1] &
                                 ((unsigned char)255 << (8 - shift1));
                     sect_buff[dst_offset + j] =
-                        (bytebuff1 << shift1) | (bytebuff2 >> (8 - shift1));
+                        (unsigned char)((bytebuff1 << shift1) | (bytebuff2 >> (8 - shift1)));
                 }
 #ifdef DEVELMODE
                 sprintf(&bitarray[18], "\n");
@@ -8141,10 +8159,10 @@ static int writeSelections(TIFF *in, TIFF **out, struct crop_mask *crop,
             crop_buff = seg_buffs[0].buffer;
             if (update_output_file(out, mp, autoindex, filename, page))
                 return (1);
-            page_count = total_pages;
+            page_count = (int)total_pages;
             if (writeCroppedImage(in, *out, image, dump, crop->combined_width,
-                                  crop->combined_length, crop_buff, *page,
-                                  total_pages))
+                                  crop->combined_length, crop_buff, (int)*page,
+                                  (int)total_pages))
             {
                 TIFFError("writeRegions", "Unable to write new image");
                 return (-1);
@@ -8154,14 +8172,14 @@ static int writeSelections(TIFF *in, TIFF **out, struct crop_mask *crop,
             autoindex = 0;
             if (update_output_file(out, mp, autoindex, filename, page))
                 return (1);
-            page_count = crop->selections * total_pages;
+            page_count = (int)(crop->selections * total_pages);
             for (i = 0; i < crop->selections; i++)
             {
                 crop_buff = seg_buffs[i].buffer;
                 if (writeCroppedImage(in, *out, image, dump,
                                       crop->regionlist[i].width,
                                       crop->regionlist[i].length, crop_buff,
-                                      *page, page_count))
+                                      (int)*page, page_count))
                 {
                     TIFFError("writeRegions", "Unable to write new image");
                     return (-1);
@@ -8175,8 +8193,8 @@ static int writeSelections(TIFF *in, TIFF **out, struct crop_mask *crop,
 
             crop_buff = seg_buffs[0].buffer;
             if (writeCroppedImage(in, *out, image, dump, crop->combined_width,
-                                  crop->combined_length, crop_buff, *page,
-                                  total_pages))
+                                  crop->combined_length, crop_buff, (int)*page,
+                                  (int)total_pages))
             {
                 TIFFError("writeRegions", "Unable to write new image");
                 return (-1);
@@ -8184,7 +8202,7 @@ static int writeSelections(TIFF *in, TIFF **out, struct crop_mask *crop,
             break;
         case FILE_PER_IMAGE_SEPARATED: /* Regions as separated images */
             autoindex = 1;
-            page_count = crop->selections;
+            page_count = (int)crop->selections;
             if (update_output_file(out, mp, autoindex, filename, page))
                 return (1);
 
@@ -8195,7 +8213,7 @@ static int writeSelections(TIFF *in, TIFF **out, struct crop_mask *crop,
                 if (writeCroppedImage(in, *out, image, dump,
                                       crop->regionlist[i].width,
                                       crop->regionlist[i].length, crop_buff,
-                                      *page, page_count))
+                                      (int)*page, page_count))
                 {
                     TIFFError("writeRegions", "Unable to write new image");
                     return (-1);
@@ -8215,7 +8233,7 @@ static int writeSelections(TIFF *in, TIFF **out, struct crop_mask *crop,
                 if (writeCroppedImage(in, *out, image, dump,
                                       crop->regionlist[i].width,
                                       crop->regionlist[i].length, crop_buff,
-                                      *page, page_count))
+                                      (int)*page, page_count))
                 {
                     TIFFError("writeRegions", "Unable to write new image");
                     return (-1);
@@ -8519,6 +8537,8 @@ static int writeSingleSection(TIFF *in, TIFF *out, struct image_data *image,
             CopyTag(TIFFTAG_FAXRECVTIME, 1, TIFF_LONG);
             CopyTag(TIFFTAG_FAXSUBADDRESS, 1, TIFF_ASCII);
             break;
+        default:
+            break;
     }
     {
         uint32_t len32;
@@ -8673,7 +8693,7 @@ static int processCropSelections(struct image_data *image,
                                                      NUM_BUFF_OVERSIZE_BYTES);
         else
         {
-            prev_cropsize = seg_buffs[0].size;
+            prev_cropsize = (tsize_t)seg_buffs[0].size;
             if (prev_cropsize < cropsize)
             {
                 next_buff = (unsigned char *)_TIFFrealloc(
@@ -8698,7 +8718,7 @@ static int processCropSelections(struct image_data *image,
 
         _TIFFmemset(crop_buff, 0, cropsize + NUM_BUFF_OVERSIZE_BYTES);
         seg_buffs[0].buffer = crop_buff;
-        seg_buffs[0].size = cropsize;
+        seg_buffs[0].size = (size_t)cropsize;
 
         /* Checks for matching width or length as required */
         if (extractCompositeRegions(image, crop, read_buff, crop_buff) != 0)
@@ -8794,7 +8814,7 @@ static int processCropSelections(struct image_data *image,
                     cropsize + NUM_BUFF_OVERSIZE_BYTES);
             else
             {
-                prev_cropsize = seg_buffs[i].size;
+                prev_cropsize = (tsize_t)seg_buffs[i].size;
                 if (prev_cropsize < cropsize)
                 {
                     next_buff = (unsigned char *)_TIFFrealloc(
@@ -8819,7 +8839,7 @@ static int processCropSelections(struct image_data *image,
 
             _TIFFmemset(crop_buff, 0, cropsize + NUM_BUFF_OVERSIZE_BYTES);
             seg_buffs[i].buffer = crop_buff;
-            seg_buffs[i].size = cropsize;
+            seg_buffs[i].size = (size_t)cropsize;
 
             if (extractSeparateRegion(image, crop, read_buff, crop_buff, i))
             {
@@ -9438,8 +9458,8 @@ static int rotateContigSamples8bits(uint16_t rotation, uint16_t spp,
                               "Invalid rotation %" PRIu16, rotation);
                     return (1);
             }
-            matchbits = maskbits << (8 - src_bit - bps);
-            buff1 = ((*next) & matchbits) << (src_bit);
+            matchbits = (uint8_t)(maskbits << (8 - src_bit - bps));
+            buff1 = (uint8_t)(((*next) & matchbits) << (src_bit));
 
             /* If we have a full buffer's worth, write it out */
             if (ready_bits >= 8)
@@ -9519,22 +9539,22 @@ static int rotateContigSamples16bits(uint16_t rotation, uint16_t spp,
                               "Invalid rotation %" PRIu16, rotation);
                     return (1);
             }
-            matchbits = maskbits << (16 - src_bit - bps);
+            matchbits = (uint16_t)(maskbits << (16 - src_bit - bps));
             if (little_endian)
-                buff1 = (next[0] << 8) | next[1];
+                buff1 = (uint16_t)((next[0] << 8) | next[1]);
             else
-                buff1 = (next[1] << 8) | next[0];
+                buff1 = (uint16_t)((next[1] << 8) | next[0]);
 
-            buff1 = (buff1 & matchbits) << (src_bit);
+            buff1 = (uint16_t)((buff1 & matchbits) << (src_bit));
 
             /* If we have a full buffer's worth, write it out */
             if (ready_bits >= 8)
             {
-                bytebuff = (buff2 >> 8);
+                bytebuff = (uint8_t)(buff2 >> 8);
                 *dst++ = bytebuff;
                 ready_bits -= 8;
                 /* shift in new bits */
-                buff2 = ((buff2 << 8) | (buff1 >> ready_bits));
+                buff2 = (uint16_t)((buff2 << 8) | (buff1 >> ready_bits));
             }
             else
             { /* add another bps bits to the buffer */
@@ -9546,7 +9566,7 @@ static int rotateContigSamples16bits(uint16_t rotation, uint16_t spp,
 
     if (ready_bits > 0)
     {
-        bytebuff = (buff2 >> 8);
+        bytebuff = (uint8_t)(buff2 >> 8);
         *dst++ = bytebuff;
     }
 
@@ -9609,11 +9629,11 @@ static int rotateContigSamples24bits(uint16_t rotation, uint16_t spp,
             }
             matchbits = maskbits << (32 - src_bit - bps);
             if (little_endian)
-                buff1 = (next[0] << 24) | (next[1] << 16) | (next[2] << 8) |
-                        next[3];
+                buff1 = (uint32_t)((next[0] << 24) | (next[1] << 16) | (next[2] << 8) |
+                        next[3]);
             else
-                buff1 = (next[3] << 24) | (next[2] << 16) | (next[1] << 8) |
-                        next[0];
+                buff1 = (uint32_t)((next[3] << 24) | (next[2] << 16) | (next[1] << 8) |
+                        next[0]);
             buff1 = (buff1 & matchbits) << (src_bit);
 
             /* If we have a full buffer's worth, write it out */
@@ -9639,7 +9659,7 @@ static int rotateContigSamples24bits(uint16_t rotation, uint16_t spp,
     /* catch any trailing bits at the end of the line */
     while (ready_bits > 0)
     {
-        bytebuff1 = (buff2 >> 24);
+        bytebuff1 = (uint8_t)(buff2 >> 24);
         *dst++ = bytebuff1;
 
         buff2 = (buff2 << 8);
@@ -9716,14 +9736,14 @@ static int rotateContigSamples32bits(uint16_t rotation, uint16_t spp,
             matchbits = maskbits << (64 - src_bit - bps);
             if (little_endian)
             {
-                longbuff1 = (next[0] << 24) | (next[1] << 16) | (next[2] << 8) |
-                            next[3];
+                longbuff1 = (uint32_t)((next[0] << 24) | (next[1] << 16) | (next[2] << 8) |
+                            next[3]);
                 longbuff2 = longbuff1;
             }
             else
             {
-                longbuff1 = (next[3] << 24) | (next[2] << 16) | (next[1] << 8) |
-                            next[0];
+                longbuff1 = (uint32_t)((next[3] << 24) | (next[2] << 16) | (next[1] << 8) |
+                            next[0]);
                 longbuff2 = longbuff1;
             }
 
@@ -9754,7 +9774,7 @@ static int rotateContigSamples32bits(uint16_t rotation, uint16_t spp,
     }
     while (ready_bits > 0)
     {
-        bytebuff1 = (buff2 >> 56);
+        bytebuff1 = (uint8_t)(buff2 >> 56);
         *dst++ = bytebuff1;
         buff2 = (buff2 << 8);
         ready_bits -= 8;
@@ -9822,12 +9842,12 @@ static int rotateImage(uint16_t rotation, struct image_data *image,
         buffsize = ((tmsize_t)rowsize + 1) * length;
     }
 
-    bytes_per_sample = (bps + 7) / 8;
-    bytes_per_pixel = ((bps * spp) + 7) / 8;
+    bytes_per_sample = (uint32_t)((bps + 7) / 8);
+    bytes_per_pixel = (uint32_t)(((bps * spp) + 7) / 8);
     if (bytes_per_pixel < (bytes_per_sample + 1))
-        shift_width = bytes_per_pixel;
+        shift_width = (int)bytes_per_pixel;
     else
-        shift_width = bytes_per_sample + 1;
+        shift_width = (int)(bytes_per_sample + 1);
 
     switch (rotation)
     {
@@ -9856,7 +9876,7 @@ static int rotateImage(uint16_t rotation, struct image_data *image,
     }
     _TIFFmemset(rbuff, '\0', buffsize + NUM_BUFF_OVERSIZE_BYTES);
     if (rot_buf_size != NULL)
-        *rot_buf_size = buffsize;
+        *rot_buf_size = (size_t)buffsize;
 
     ibuff = *ibuff_ptr;
     switch (rotation)
@@ -9865,7 +9885,7 @@ static int rotateImage(uint16_t rotation, struct image_data *image,
             if ((bps % 8) == 0) /* byte aligned data */
             {
                 src = ibuff;
-                pix_offset = (spp * bps) / 8;
+                pix_offset = (uint32_t)(spp * bps) / 8;
                 for (row = 0; row < length; row++)
                 {
                     dst_offset = (length - row - 1) * rowsize;
@@ -10163,8 +10183,8 @@ static int reverseSamples8bits(uint16_t spp, uint16_t bps, uint32_t width,
             }
 
             src = ibuff + src_byte;
-            match_bits = mask_bits << (8 - src_bit - bps);
-            buff1 = ((*src) & match_bits) << (src_bit);
+            match_bits = (uint8_t)(mask_bits << (8 - src_bit - bps));
+            buff1 = (uint8_t)(((*src) & match_bits) << (src_bit));
 
             if (ready_bits < 8)
                 buff2 = (buff2 | (buff1 >> ready_bits));
@@ -10227,12 +10247,12 @@ static int reverseSamples16bits(uint16_t spp, uint16_t bps, uint32_t width,
             }
 
             src = ibuff + src_byte;
-            match_bits = mask_bits << (16 - high_bit - bps);
+            match_bits = (uint16_t)(mask_bits << (16 - high_bit - bps));
             if (little_endian)
-                buff1 = (src[0] << 8) | src[1];
+                buff1 = (uint16_t)((src[0] << 8) | src[1]);
             else
-                buff1 = (src[1] << 8) | src[0];
-            buff1 = (buff1 & match_bits) << (high_bit);
+                buff1 = (uint16_t)((src[1] << 8) | src[0]);
+            buff1 = (uint16_t)((buff1 & match_bits) << (high_bit));
 
             if (ready_bits < 8)
             { /* add another bps bits to the buffer */
@@ -10240,11 +10260,11 @@ static int reverseSamples16bits(uint16_t spp, uint16_t bps, uint32_t width,
             }
             else /* If we have a full buffer's worth, write it out */
             {
-                bytebuff = (buff2 >> 8);
+                bytebuff = (uint8_t)(buff2 >> 8);
                 *dst++ = bytebuff;
                 ready_bits -= 8;
                 /* shift in new bits */
-                buff2 = ((buff2 << 8) | (buff1 >> ready_bits));
+                buff2 = (uint16_t)((buff2 << 8) | (buff1 >> ready_bits));
             }
             ready_bits += bps;
         }
@@ -10252,7 +10272,7 @@ static int reverseSamples16bits(uint16_t spp, uint16_t bps, uint32_t width,
 
     if (ready_bits > 0)
     {
-        bytebuff = (buff2 >> 8);
+        bytebuff = (uint8_t)(buff2 >> 8);
         *dst++ = bytebuff;
     }
 
@@ -10303,10 +10323,10 @@ static int reverseSamples24bits(uint16_t spp, uint16_t bps, uint32_t width,
             match_bits = mask_bits << (32 - high_bit - bps);
             if (little_endian)
                 buff1 =
-                    (src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3];
+                    (uint32_t)((src[0] << 24) | (src[1] << 16) | (src[2] << 8) | src[3]);
             else
                 buff1 =
-                    (src[3] << 24) | (src[2] << 16) | (src[1] << 8) | src[0];
+                    (uint32_t)((src[3] << 24) | (src[2] << 16) | (src[1] << 8) | src[0]);
             buff1 = (buff1 & match_bits) << (high_bit);
 
             if (ready_bits < 16)
@@ -10331,7 +10351,7 @@ static int reverseSamples24bits(uint16_t spp, uint16_t bps, uint32_t width,
     /* catch any trailing bits at the end of the line */
     while (ready_bits > 0)
     {
-        bytebuff1 = (buff2 >> 24);
+        bytebuff1 = (uint8_t)(buff2 >> 24);
         *dst++ = bytebuff1;
 
         buff2 = (buff2 << 8);
@@ -10435,7 +10455,7 @@ static int reverseSamples32bits(uint16_t spp, uint16_t bps, uint32_t width,
     }
     while (ready_bits > 0)
     {
-        bytebuff1 = (buff2 >> 56);
+        bytebuff1 = (uint8_t)(buff2 >> 56);
         *dst++ = bytebuff1;
         buff2 = (buff2 << 8);
         ready_bits -= 8;
@@ -10458,7 +10478,7 @@ static int reverseSamplesBytes(uint16_t spp, uint16_t bps, uint32_t width,
         return (1);
     }
 
-    bytes_per_pixel = ((bps * spp) + 7) / 8;
+    bytes_per_pixel = (uint32_t)(((bps * spp) + 7) / 8);
     if (bytes_per_pixel > sizeof(swapbuff))
     {
         TIFFError("reverseSamplesBytes", "bytes_per_pixel too large");
@@ -10567,12 +10587,12 @@ static int mirrorImage(uint16_t spp, uint16_t bps, uint16_t mirror,
                     return (-1);
                 }
                 _TIFFmemset(line_buff, '\0', rowsize + NUM_BUFF_OVERSIZE_BYTES);
-                bytes_per_sample = (bps + 7) / 8;
-                bytes_per_pixel = ((bps * spp) + 7) / 8;
+                bytes_per_sample = (uint32_t)((bps + 7) / 8);
+                bytes_per_pixel = (uint32_t)(((bps * spp) + 7) / 8);
                 if (bytes_per_pixel < (bytes_per_sample + 1))
-                    shift_width = bytes_per_pixel;
+                    shift_width = (int)bytes_per_pixel;
                 else
-                    shift_width = bytes_per_sample + 1;
+                    shift_width = (int)(bytes_per_sample + 1);
 
                 for (row = 0; row < length; row++)
                 {

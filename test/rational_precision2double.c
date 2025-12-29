@@ -177,9 +177,9 @@ static void _XTIFFDefaultDirectory(TIFF *tif)
     uint32_t n, nadded;
 
     /* Install the extended Tag field info */
-    n = N(tifFieldInfo);
+    n = (uint32_t)N(tifFieldInfo);
     //_TIFFMergeFields(tif, const TIFFField info[], uint32_t n);
-    nadded = _TIFFMergeFields(tif, tifFieldInfo, n);
+    nadded = (uint32_t)_TIFFMergeFields(tif, tifFieldInfo, n);
     (void)nadded;
 
     /* Since an XTIFF client module may have overridden
@@ -610,7 +610,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
         /*==== Automatically check all custom rational tags == WRITING ===*/
         /*-- Get array, where TIFF tag fields are defined --*/
         tFieldArray = _TIFFGetFields();
-        nTags = tFieldArray->count;
+        nTags = (int32_t)tFieldArray->count;
 
         for (i = 0; i < nTags; i++)
         {
@@ -710,6 +710,52 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                                 }
                             }
                         }
+                        break;
+                    case TIFF_SETGET_UNDEFINED:
+                    case TIFF_SETGET_ASCII:
+                    case TIFF_SETGET_UINT8:
+                    case TIFF_SETGET_SINT8:
+                    case TIFF_SETGET_UINT16:
+                    case TIFF_SETGET_SINT16:
+                    case TIFF_SETGET_UINT32:
+                    case TIFF_SETGET_SINT32:
+                    case TIFF_SETGET_UINT64:
+                    case TIFF_SETGET_SINT64:
+                    case TIFF_SETGET_IFD8:
+                    case TIFF_SETGET_INT:
+                    case TIFF_SETGET_UINT16_PAIR:
+                    case TIFF_SETGET_C0_ASCII:
+                    case TIFF_SETGET_C0_UINT8:
+                    case TIFF_SETGET_C0_SINT8:
+                    case TIFF_SETGET_C0_UINT16:
+                    case TIFF_SETGET_C0_SINT16:
+                    case TIFF_SETGET_C0_UINT32:
+                    case TIFF_SETGET_C0_SINT32:
+                    case TIFF_SETGET_C0_UINT64:
+                    case TIFF_SETGET_C0_SINT64:
+                    case TIFF_SETGET_C0_IFD8:
+                    case TIFF_SETGET_C16_ASCII:
+                    case TIFF_SETGET_C16_UINT8:
+                    case TIFF_SETGET_C16_SINT8:
+                    case TIFF_SETGET_C16_UINT16:
+                    case TIFF_SETGET_C16_SINT16:
+                    case TIFF_SETGET_C16_UINT32:
+                    case TIFF_SETGET_C16_SINT32:
+                    case TIFF_SETGET_C16_UINT64:
+                    case TIFF_SETGET_C16_SINT64:
+                    case TIFF_SETGET_C16_IFD8:
+                    case TIFF_SETGET_C32_ASCII:
+                    case TIFF_SETGET_C32_UINT8:
+                    case TIFF_SETGET_C32_SINT8:
+                    case TIFF_SETGET_C32_UINT16:
+                    case TIFF_SETGET_C32_SINT16:
+                    case TIFF_SETGET_C32_UINT32:
+                    case TIFF_SETGET_C32_SINT32:
+                    case TIFF_SETGET_C32_UINT64:
+                    case TIFF_SETGET_C32_SINT64:
+                    case TIFF_SETGET_C32_IFD8:
+                    case TIFF_SETGET_OTHER:
+                        /* Not applicable for this test */
                         break;
                     default:
                         fprintf(stderr,
@@ -1061,7 +1107,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
 
         /*-- Get array, where standard TIFF tag fields are defined --*/
         tFieldArray = _TIFFGetFields();
-        nTags = tFieldArray->count;
+        nTags = (int32_t)tFieldArray->count;
 
         for (i = 0; i < nTags; i++)
         {
@@ -1249,7 +1295,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                                 tSetFieldType == TIFF_SETGET_C32_FLOAT)
                             {
                                 memcpy(&auxFloatArray, pVoidArray,
-                                       (auxInt32 * sizeof(auxFloatArray[0])));
+                                       ((size_t)auxInt32 * sizeof(auxFloatArray[0])));
                                 /* compare read values with written ones */
                                 if (tType == TIFF_RATIONAL ||
                                     tType == TIFF_SRATIONAL)
@@ -1278,7 +1324,7 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                             else
                             {
                                 memcpy(&auxDoubleArray, pVoidArray,
-                                       (auxInt32 * sizeof(auxDoubleArray[0])));
+                                       ((size_t)auxInt32 * sizeof(auxDoubleArray[0])));
                                 /* compare read values with written ones */
                                 if (tType == TIFF_RATIONAL ||
                                     tType == TIFF_SRATIONAL)
@@ -1305,6 +1351,52 @@ int write_test_tiff(TIFF *tif, const char *filenameRead, int blnAllCustomTags)
                                 }
                             }
                         }
+                        break;
+                    case TIFF_SETGET_ASCII:
+                    case TIFF_SETGET_C0_ASCII:
+                    case TIFF_SETGET_C0_IFD8:
+                    case TIFF_SETGET_C0_SINT16:
+                    case TIFF_SETGET_C0_SINT32:
+                    case TIFF_SETGET_C0_SINT64:
+                    case TIFF_SETGET_C0_SINT8:
+                    case TIFF_SETGET_C0_UINT16:
+                    case TIFF_SETGET_C0_UINT32:
+                    case TIFF_SETGET_C0_UINT64:
+                    case TIFF_SETGET_C0_UINT8:
+                    case TIFF_SETGET_C16_ASCII:
+                    case TIFF_SETGET_C16_IFD8:
+                    case TIFF_SETGET_C16_SINT16:
+                    case TIFF_SETGET_C16_SINT32:
+                    case TIFF_SETGET_C16_SINT64:
+                    case TIFF_SETGET_C16_SINT8:
+                    case TIFF_SETGET_C16_UINT16:
+                    case TIFF_SETGET_C16_UINT32:
+                    case TIFF_SETGET_C16_UINT64:
+                    case TIFF_SETGET_C16_UINT8:
+                    case TIFF_SETGET_C32_ASCII:
+                    case TIFF_SETGET_C32_IFD8:
+                    case TIFF_SETGET_C32_SINT16:
+                    case TIFF_SETGET_C32_SINT32:
+                    case TIFF_SETGET_C32_SINT64:
+                    case TIFF_SETGET_C32_SINT8:
+                    case TIFF_SETGET_C32_UINT16:
+                    case TIFF_SETGET_C32_UINT32:
+                    case TIFF_SETGET_C32_UINT64:
+                    case TIFF_SETGET_C32_UINT8:
+                    case TIFF_SETGET_IFD8:
+                    case TIFF_SETGET_INT:
+                    case TIFF_SETGET_SINT16:
+                    case TIFF_SETGET_SINT32:
+                    case TIFF_SETGET_SINT64:
+                    case TIFF_SETGET_SINT8:
+                    case TIFF_SETGET_UINT16:
+                    case TIFF_SETGET_UINT16_PAIR:
+                    case TIFF_SETGET_UINT32:
+                    case TIFF_SETGET_UINT64:
+                    case TIFF_SETGET_UINT8:
+                    case TIFF_SETGET_UNDEFINED:
+                    case TIFF_SETGET_OTHER:
+                        /* Not applicable for this test */
                         break;
                     default:
                         fprintf(stderr,

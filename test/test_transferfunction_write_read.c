@@ -64,7 +64,7 @@ const uint16_t *ptfR2;
  * Pointer ptf0, ptf1, ptf2 are initialized to the first array element of
  * each transfer function.
  */
-int setup_transfer_functions(void)
+static int setup_transfer_functions(void)
 {
     if (pTransferFunctionData)
         _TIFFfree(pTransferFunctionData);
@@ -94,7 +94,7 @@ int setup_transfer_functions(void)
  * TIFF **ptif returns the TIFF pointer.
  * The function returns a bit-field with one bit set for each successfully read transfer function.
  */
-int read_check_transferfunctions(TIFF **ptif, const char *filename, int blnClose, const uint16_t *ptfx0,
+static int read_check_transferfunctions(TIFF **ptif, const char *filename, int blnClose, const uint16_t *ptfx0,
                                  const uint16_t *ptfx1, const uint16_t *ptfx2)
 {
     /* Test reading of transfer functions */
@@ -144,7 +144,7 @@ failure:
  * Only if blnCloseFile is true, the file is closed.
  * TIFF **ptif returns the pointer to the opened TIFF file.
  */
-int write_basic_IFD_data(TIFF **ptif, const char *filename, int wrtTransferFunction, int nExtraSamples,
+static int write_basic_IFD_data(TIFF **ptif, const char *filename, int wrtTransferFunction, int nExtraSamples,
                          int blnCloseFile)
 {
     unsigned char buf[3] = {0, 127, 255};
@@ -230,7 +230,7 @@ int write_basic_IFD_data(TIFF **ptif, const char *filename, int wrtTransferFunct
 
     /* Setup buffer for image line */
     bufLen = (size_t)width * spp * (bps + 7) / 8;
-    bufLine = (uint8_t *)_TIFFmalloc(bufLen);
+    bufLine = (uint8_t *)_TIFFmalloc((tmsize_t)bufLen);
     if (!bufLine)
     {
         fprintf(stderr, "write_basic_IFD_data(): Can't allocate bufLine buffer.\n");
@@ -242,7 +242,7 @@ int write_basic_IFD_data(TIFF **ptif, const char *filename, int wrtTransferFunct
     /* Write dummy pixel data. */
     for (int i = 0; i < length; i++)
     {
-        if (TIFFWriteScanline(tif, bufLine, i, 0) == -1)
+        if (TIFFWriteScanline(tif, bufLine, (uint32_t)i, 0) == -1)
         {
             fprintf(stderr, "write_basic_IFD_data(): Can't write image data.\n");
             GOTOFAILURE(1);
