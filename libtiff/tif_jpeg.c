@@ -22,9 +22,6 @@
  * OF THIS SOFTWARE.
  */
 
-#define WIN32_LEAN_AND_MEAN
-#define VC_EXTRALEAN
-
 #include "tiffiop.h"
 #include <stdlib.h>
 
@@ -146,20 +143,9 @@ int TIFFJPEGIsFullStripRequired_12(TIFF *tif);
 #define LONGJMP(jbuf, code) longjmp(jbuf, code)
 #define JMP_BUF jmp_buf
 
-#ifndef TIFF_jpeg_destination_mgr_defined
-#define TIFF_jpeg_destination_mgr_defined
-typedef struct jpeg_destination_mgr jpeg_destination_mgr;
-#endif
-
-#ifndef TIFF_jpeg_source_mgr_defined
-#define TIFF_jpeg_source_mgr_defined
-typedef struct jpeg_source_mgr jpeg_source_mgr;
-#endif
-
-#ifndef TIFF_jpeg_error_mgr_defined
-#define TIFF_jpeg_error_mgr_defined
-typedef struct jpeg_error_mgr jpeg_error_mgr;
-#endif
+typedef struct jpeg_destination_mgr tiff_jpeg_destination_mgr;
+typedef struct jpeg_source_mgr tiff_jpeg_source_mgr;
+typedef struct jpeg_error_mgr tiff_jpeg_error_mgr;
 
 /*
  * State block for each open TIFF file using
@@ -188,7 +174,7 @@ typedef struct
     } cinfo; /* NB: must be first */
     int cinfo_initialized;
 
-    jpeg_error_mgr err;  /* libjpeg error manager */
+    tiff_jpeg_error_mgr err;  /* libjpeg error manager */
     JMP_BUF exit_jmpbuf; /* for catching libjpeg failures */
 
     struct jpeg_progress_mgr progress;
@@ -196,8 +182,8 @@ typedef struct
      * The following two members could be a union, but
      * they're small enough that it's not worth the effort.
      */
-    jpeg_destination_mgr dest; /* data dest for compression */
-    jpeg_source_mgr src;       /* data source for decompression */
+    tiff_jpeg_destination_mgr dest; /* data dest for compression */
+    tiff_jpeg_source_mgr src;       /* data source for decompression */
                                /* private state */
     TIFF *tif;                 /* back link needed by some code */
     uint16_t photometric;      /* copy of PhotometricInterpretation */
@@ -919,7 +905,7 @@ JPEGFixupTagsSubsamplingSec(struct JPEGFixupTagsSubsamplingData *data)
                         return (0);
                     if (n < 2)
                         return (0);
-                    n -= 2;
+                    n = (uint16_t)(n - 2);
                     if (n > 0)
                         JPEGFixupTagsSubsamplingSkip(data, n);
                 }
@@ -1044,7 +1030,7 @@ JPEGFixupTagsSubsamplingReadWord(struct JPEGFixupTagsSubsamplingData *data,
         return (0);
     if (!JPEGFixupTagsSubsamplingReadByte(data, &mb))
         return (0);
-    *result = (ma << 8) | mb;
+    *result = (uint16_t)((ma << 8) | mb);
     return (1);
 }
 
@@ -1200,7 +1186,7 @@ int TIFFJPEGIsFullStripRequired(TIFF *tif)
         return (0);
 
     tif->tif_rawcp = (uint8_t *)sp->src.next_input_byte;
-    tif->tif_rawcc = sp->src.bytes_in_buffer;
+    tif->tif_rawcc = (tmsize_t)sp->src.bytes_in_buffer;
 
     /*
      * Check image parameters and set decompression parameters.
@@ -1327,10 +1313,10 @@ int TIFFJPEGIsFullStripRequired(TIFF *tif)
             if (compptr->h_samp_factor > 0 && compptr->v_samp_factor > 0)
             {
                 nRequiredMemory +=
-                    (toff_t)(((compptr->width_in_blocks +
+                    (toff_t)((JDIMENSION)(((int)compptr->width_in_blocks +
                                compptr->h_samp_factor - 1) /
                               compptr->h_samp_factor)) *
-                    ((compptr->height_in_blocks + compptr->v_samp_factor - 1) /
+                    (JDIMENSION)(((int)compptr->height_in_blocks + compptr->v_samp_factor - 1) /
                      compptr->v_samp_factor) *
                     sizeof(JBLOCK);
             }
@@ -1447,7 +1433,7 @@ int TIFFJPEGIsFullStripRequired(TIFF *tif)
  * Decode a chunk of pixels.
  * "Standard" case: returned data is not downsampled.
  */
-#if !JPEG_LIB_MK1_OR_12BIT
+#if !defined(JPEG_LIB_MK1_OR_12BIT)
 static int JPEGDecode(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
 {
     JPEGState *sp = JState(tif);
@@ -1499,15 +1485,15 @@ static int JPEGDecode(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
 
     /* Update information on consumed data */
     tif->tif_rawcp = (uint8_t *)sp->src.next_input_byte;
-    tif->tif_rawcc = sp->src.bytes_in_buffer;
+    tif->tif_rawcc = (tmsize_t)sp->src.bytes_in_buffer;
 
     /* Close down the decompressor if we've finished the strip or tile. */
     return sp->cinfo.d.output_scanline < sp->cinfo.d.output_height ||
            TIFFjpeg_finish_decompress(sp);
 }
-#endif /* !JPEG_LIB_MK1_OR_12BIT */
+#endif /* !defined(JPEG_LIB_MK1_OR_12BIT) */
 
-#if JPEG_LIB_MK1_OR_12BIT
+#if defined(JPEG_LIB_MK1_OR_12BIT)
 /*ARGSUSED*/ static int JPEGDecode(TIFF *tif, uint8_t *buf, tmsize_t cc,
                                    uint16_t s)
 {
@@ -1547,8 +1533,8 @@ static int JPEGDecode(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
         if (sp->cinfo.d.data_precision == 12)
         {
             line_work_buf = (TIFF_JSAMPROW)_TIFFmallocExt(
-                tif, sizeof(short) * sp->cinfo.d.output_width *
-                         sp->cinfo.d.num_components);
+                tif, (tmsize_t)((size_t)sizeof(short) * (size_t)sp->cinfo.d.output_width *
+                         (size_t)sp->cinfo.d.num_components));
         }
 
         do
@@ -1570,8 +1556,8 @@ static int JPEGDecode(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
 
                 if (sp->cinfo.d.data_precision == 12)
                 {
-                    int value_pairs = (sp->cinfo.d.output_width *
-                                       sp->cinfo.d.num_components) /
+                    int value_pairs = (int)((JDIMENSION)sp->cinfo.d.output_width *
+                                       (JDIMENSION)sp->cinfo.d.num_components) /
                                       2;
                     int iPair;
 
@@ -1591,13 +1577,13 @@ static int JPEGDecode(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
                 else if (sp->cinfo.d.data_precision == 8)
                 {
                     int value_count =
-                        (sp->cinfo.d.output_width * sp->cinfo.d.num_components);
+                        (int)((JDIMENSION)sp->cinfo.d.output_width * (JDIMENSION)sp->cinfo.d.num_components);
                     int iValue;
 
                     for (iValue = 0; iValue < value_count; iValue++)
                     {
                         ((unsigned char *)buf)[iValue] =
-                            line_work_buf[iValue] & 0xff;
+                            (unsigned char)(line_work_buf[iValue] & 0xff);
                     }
                 }
             }
@@ -1613,13 +1599,13 @@ static int JPEGDecode(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
 
     /* Update information on consumed data */
     tif->tif_rawcp = (uint8_t *)sp->src.next_input_byte;
-    tif->tif_rawcc = sp->src.bytes_in_buffer;
+    tif->tif_rawcc = (tmsize_t)sp->src.bytes_in_buffer;
 
     /* Close down the decompressor if we've finished the strip or tile. */
     return sp->cinfo.d.output_scanline < sp->cinfo.d.output_height ||
            TIFFjpeg_finish_decompress(sp);
 }
-#endif /* JPEG_LIB_MK1_OR_12BIT */
+#endif /* defined(JPEG_LIB_MK1_OR_12BIT) */
 
 /*ARGSUSED*/ static int DecodeRowError(TIFF *tif, uint8_t *buf, tmsize_t cc,
                                        uint16_t s)
@@ -1670,8 +1656,8 @@ static int JPEGDecode(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
 
 #if defined(JPEG_LIB_MK1_OR_12BIT)
         tmpbuf = (unsigned short *)_TIFFmallocExt(
-            tif, sizeof(unsigned short) * sp->cinfo.d.output_width *
-                     sp->cinfo.d.num_components);
+            tif, (tmsize_t)((size_t)sizeof(unsigned short) * (size_t)sp->cinfo.d.output_width *
+                     (size_t)sp->cinfo.d.num_components));
         if (tmpbuf == NULL)
         {
             TIFFErrorExtR(tif, "JPEGDecodeRaw", "Out of memory");
@@ -1765,16 +1751,16 @@ static int JPEGDecode(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
                 {
                     int i = 0;
                     int len =
-                        sp->cinfo.d.output_width * sp->cinfo.d.num_components;
+                        (int)((JDIMENSION)sp->cinfo.d.output_width * (JDIMENSION)sp->cinfo.d.num_components);
                     for (i = 0; i < len; i++)
                     {
-                        ((unsigned char *)buf)[i] = tmpbuf[i] & 0xff;
+                        ((unsigned char *)buf)[i] = (unsigned char)(tmpbuf[i] & 0xff);
                     }
                 }
                 else
                 { /* 12-bit */
-                    int value_pairs = (sp->cinfo.d.output_width *
-                                       sp->cinfo.d.num_components) /
+                    int value_pairs = (int)((JDIMENSION)sp->cinfo.d.output_width *
+                                       (JDIMENSION)sp->cinfo.d.num_components) /
                                       2;
                     int iPair;
                     for (iPair = 0; iPair < value_pairs; iPair++)
@@ -2083,14 +2069,14 @@ static int JPEGSetupEncode(TIFF *tif)
 #endif
     if (isTiled(tif))
     {
-        if ((td->td_tilelength % (sp->v_sampling * DCTSIZE)) != 0)
+        if ((td->td_tilelength % (uint32_t)(sp->v_sampling * DCTSIZE)) != 0)
         {
             TIFFErrorExtR(tif, module,
                           "JPEG tile height must be multiple of %" PRIu32,
                           (uint32_t)(sp->v_sampling * DCTSIZE));
             return (0);
         }
-        if ((td->td_tilewidth % (sp->h_sampling * DCTSIZE)) != 0)
+        if ((td->td_tilewidth % (uint32_t)(sp->h_sampling * DCTSIZE)) != 0)
         {
             TIFFErrorExtR(tif, module,
                           "JPEG tile width must be multiple of %" PRIu32,
@@ -2101,7 +2087,7 @@ static int JPEGSetupEncode(TIFF *tif)
     else
     {
         if (td->td_rowsperstrip < td->td_imagelength &&
-            (td->td_rowsperstrip % (sp->v_sampling * DCTSIZE)) != 0)
+            (td->td_rowsperstrip % (uint32_t)(sp->v_sampling * DCTSIZE)) != 0)
         {
             TIFFErrorExtR(tif, module,
                           "RowsPerStrip must be multiple of %" PRIu32
@@ -2347,7 +2333,7 @@ static int JPEGEncode(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
     if (sp->cinfo.c.data_precision == 12)
     {
         line16_count = (int)((sp->bytesperline * 2) / 3);
-        line16 = (short *)_TIFFmallocExt(tif, sizeof(short) * line16_count);
+        line16 = (short *)_TIFFmallocExt(tif, (tmsize_t)(sizeof(short) * (unsigned long)line16_count));
         if (!line16)
         {
             TIFFErrorExtR(tif, "JPEGEncode", "Failed to allocate memory");
@@ -2372,8 +2358,8 @@ static int JPEGEncode(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
                 unsigned char *in_ptr = ((unsigned char *)buf) + iPair * 3;
                 TIFF_JSAMPLE *out_ptr = (TIFF_JSAMPLE *)(line16 + iPair * 2);
 
-                out_ptr[0] = (in_ptr[0] << 4) | ((in_ptr[1] & 0xf0) >> 4);
-                out_ptr[1] = ((in_ptr[1] & 0x0f) << 8) | in_ptr[2];
+                out_ptr[0] = (JSAMPLE)((in_ptr[0] << 4) | ((in_ptr[1] & 0xf0) >> 4));
+                out_ptr[1] = (JSAMPLE)(((in_ptr[1] & 0x0f) << 8) | in_ptr[2]);
             }
         }
         else
@@ -2453,7 +2439,7 @@ static int JPEGEncodeRaw(TIFF *tif, uint8_t *buf, tmsize_t cc, uint16_t s)
             int hsamp = compptr->h_samp_factor;
             int vsamp = compptr->v_samp_factor;
             int padding = (int)(compptr->width_in_blocks * DCTSIZE -
-                                clumps_per_line * hsamp);
+                                (JDIMENSION)clumps_per_line * (JDIMENSION)hsamp);
             for (ypos = 0; ypos < vsamp; ypos++)
             {
                 inptr = ((TIFF_JSAMPLE *)buf) + clumpoffset;

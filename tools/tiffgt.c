@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#if HAVE_UNISTD_H
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
                 order0 = FILLORDER_MSB2LSB;
                 break;
             case 'o':
-                diroff = strtoul(optarg, NULL, 0);
+                diroff = (uint32_t)strtoul(optarg, NULL, 0);
                 break;
             case 'p':
                 photo0 = photoArg(optarg);
@@ -144,6 +144,8 @@ int main(int argc, char *argv[])
                 usage(EXIT_FAILURE);
                 /*NOTREACHED*/
                 break;
+            default:
+                break;
         }
     filenum = argc - optind;
     if (filenum < 1)
@@ -155,22 +157,22 @@ int main(int argc, char *argv[])
     /*
      * Get the screen size
      */
-    xmax = glutGet(GLUT_SCREEN_WIDTH);
-    ymax = glutGet(GLUT_SCREEN_HEIGHT);
+    xmax = (uint32_t)glutGet(GLUT_SCREEN_WIDTH);
+    ymax = (uint32_t)glutGet(GLUT_SCREEN_HEIGHT);
 
     /*
      * Use 90% of the screen size
      */
-    xmax = xmax - xmax / 10.0;
-    ymax = ymax - ymax / 10.0;
+    xmax = (uint32_t)(xmax - xmax / 10.0);
+    ymax = (uint32_t)(ymax - ymax / 10.0);
 
-    filelist = (char **)_TIFFmalloc(filenum * sizeof(char *));
+    filelist = (char **)_TIFFmalloc((tmsize_t)((size_t)filenum * sizeof(char *)));
     if (!filelist)
     {
         TIFFError(argv[0], "Can not allocate space for the file list.");
         return EXIT_FAILURE;
     }
-    _TIFFmemcpy(filelist, argv + optind, filenum * sizeof(char *));
+    _TIFFmemcpy(filelist, argv + optind, (tmsize_t)((size_t)filenum * sizeof(char *)));
     fileindex = -1;
     if (nextImage() < 0)
     {
@@ -181,7 +183,7 @@ int main(int argc, char *argv[])
      * Set initial directory if user-specified
      * file was opened successfully.
      */
-    if (dirnum != -1 && !TIFFSetDirectory(tif, dirnum))
+    if (dirnum != -1 && !TIFFSetDirectory(tif, (tdir_t)dirnum))
         TIFFError(argv[0], "Error, seeking to directory %d", dirnum);
     if (diroff != 0 && !TIFFSetSubDirectory(tif, diroff))
         TIFFError(argv[0], "Error, setting subdirectory at %#x", diroff);
@@ -196,7 +198,7 @@ int main(int argc, char *argv[])
      * Create a new window or reconfigure an existing
      * one to suit the image to be displayed.
      */
-    glutInitWindowSize(width, height);
+    glutInitWindowSize((int)width, (int)height);
     snprintf(title, TITLE_LENGTH - 1, "%s [%u]", filelist[fileindex],
              TIFFCurrentDirectory(tif));
     glutCreateWindow(title);
@@ -245,12 +247,12 @@ static int initImage(void)
     w = img.width;
     if (h > ymax)
     {
-        w = (int)(w * ((float)ymax / h));
+        w = (uint32_t)((float)w * ((float)ymax / (float)h));
         h = ymax;
     }
     if (w > xmax)
     {
-        h = (int)(h * ((float)xmax / w));
+        h = (uint32_t)((float)h * ((float)xmax / (float)w));
         w = xmax;
     }
 
@@ -306,19 +308,19 @@ static int nextImage(void)
     return fileindex;
 }
 
-static void setWindowSize(void) { glutReshapeWindow(width, height); }
+static void setWindowSize(void) { glutReshapeWindow((int)width, (int)height); }
 
 static void raster_draw(void)
 {
-    glDrawPixels(img.width, img.height, GL_RGBA, GL_UNSIGNED_BYTE,
+    glDrawPixels((GLsizei)img.width, (GLsizei)img.height, GL_RGBA, GL_UNSIGNED_BYTE,
                  (const GLvoid *)raster);
     glFlush();
 }
 
 static void raster_reshape(int win_w, int win_h)
 {
-    GLfloat xratio = (GLfloat)win_w / img.width;
-    GLfloat yratio = (GLfloat)win_h / img.height;
+    GLfloat xratio = (GLfloat)win_w / (float)img.width;
+    GLfloat yratio = (GLfloat)win_h / (float)img.height;
     int ratio = (int)(((xratio > yratio) ? xratio : yratio) * 100);
 
     glPixelZoom(xratio, yratio);
@@ -371,6 +373,8 @@ static void raster_keys(unsigned char key, int x, int y)
         case 'q': /* exit */
         case '\033':
             cleanup_and_exit(EXIT_SUCCESS);
+        default:
+            break;
     }
     glutPostRedisplay();
 }
@@ -429,6 +433,8 @@ static void raster_special(int key, int x, int y)
                 TIFFReadDirectory(tif);
             initImage();
             setWindowSize();
+            break;
+        default:
             break;
     }
     glutPostRedisplay();

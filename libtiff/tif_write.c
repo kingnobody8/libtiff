@@ -30,8 +30,6 @@
 #include "tiffiop.h"
 #include <stdio.h>
 
-#define STRIPINCR 20 /* expansion factor on strip array */
-
 #define WRITECHECKSTRIPS(tif, module)                                          \
     (((tif)->tif_flags & TIFF_BEENWRITING) || TIFFWriteCheck((tif), 0, module))
 #define WRITECHECKTILES(tif, module)                                           \
@@ -588,8 +586,8 @@ int TIFFSetupStrips(TIFF *tif)
      * Place data at the end-of-file
      * (by setting offsets to zero).
      */
-    _TIFFmemset(td->td_stripoffset_p, 0, td->td_nstrips * sizeof(uint64_t));
-    _TIFFmemset(td->td_stripbytecount_p, 0, td->td_nstrips * sizeof(uint64_t));
+    _TIFFmemset(td->td_stripoffset_p, 0, (tmsize_t)((size_t)td->td_nstrips * sizeof(uint64_t)));
+    _TIFFmemset(td->td_stripbytecount_p, 0, (tmsize_t)((size_t)td->td_nstrips * sizeof(uint64_t)));
     TIFFSetFieldBit(tif, FIELD_STRIPOFFSETS);
     TIFFSetFieldBit(tif, FIELD_STRIPBYTECOUNTS);
     return (1);
@@ -732,10 +730,10 @@ static int TIFFGrowStrips(TIFF *tif, uint32_t delta, const char *module)
 
     assert(td->td_planarconfig == PLANARCONFIG_CONTIG);
     new_stripoffset = (uint64_t *)_TIFFreallocExt(
-        tif, td->td_stripoffset_p, (td->td_nstrips + delta) * sizeof(uint64_t));
+        tif, td->td_stripoffset_p, (tmsize_t)((size_t)(td->td_nstrips + delta) * sizeof(uint64_t)));
     new_stripbytecount = (uint64_t *)_TIFFreallocExt(
         tif, td->td_stripbytecount_p,
-        (td->td_nstrips + delta) * sizeof(uint64_t));
+        (tmsize_t)((size_t)(td->td_nstrips + delta) * sizeof(uint64_t)));
     if (new_stripoffset == NULL || new_stripbytecount == NULL)
     {
         if (new_stripoffset)
@@ -749,9 +747,9 @@ static int TIFFGrowStrips(TIFF *tif, uint32_t delta, const char *module)
     td->td_stripoffset_p = new_stripoffset;
     td->td_stripbytecount_p = new_stripbytecount;
     _TIFFmemset(td->td_stripoffset_p + td->td_nstrips, 0,
-                delta * sizeof(uint64_t));
+                (tmsize_t)((size_t)delta * sizeof(uint64_t)));
     _TIFFmemset(td->td_stripbytecount_p + td->td_nstrips, 0,
-                delta * sizeof(uint64_t));
+                (tmsize_t)((size_t)delta * sizeof(uint64_t)));
     td->td_nstrips += delta;
     tif->tif_flags |= TIFF_DIRTYDIRECT;
 
@@ -812,11 +810,11 @@ static int TIFFAppendToStrip(TIFF *tif, uint32_t strip, uint8_t *data,
         /*
          * We are starting a fresh strip/tile, so set the size to zero.
          */
-        old_byte_count = td->td_stripbytecount_p[strip];
+        old_byte_count = (int64_t)td->td_stripbytecount_p[strip];
         td->td_stripbytecount_p[strip] = 0;
     }
 
-    m = tif->tif_curoff + cc;
+    m = tif->tif_curoff + (uint64_t)cc;
     if (!(tif->tif_flags & TIFF_BIGTIFF))
         m = (uint32_t)m;
     if ((m < tif->tif_curoff) || (m < (uint64_t)cc))
@@ -850,7 +848,7 @@ static int TIFFAppendToStrip(TIFF *tif, uint32_t strip, uint8_t *data,
         offsetRead = td->td_stripoffset_p[strip];
         offsetWrite = TIFFSeekFile(tif, 0, SEEK_END);
 
-        m = offsetWrite + toCopy + cc;
+        m = offsetWrite + (uint64_t)toCopy + (uint64_t)cc;
         if (!(tif->tif_flags & TIFF_BIGTIFF) && m != (uint32_t)m)
         {
             TIFFErrorExtR(tif, module, "Maximum TIFF file size exceeded");
@@ -896,15 +894,15 @@ static int TIFFAppendToStrip(TIFF *tif, uint32_t strip, uint8_t *data,
                 _TIFFfreeExt(tif, temp);
                 return (0);
             }
-            offsetRead += tempSize;
-            offsetWrite += tempSize;
-            td->td_stripbytecount_p[strip] += tempSize;
-            toCopy -= tempSize;
+            offsetRead += (uint64_t)tempSize;
+            offsetWrite += (uint64_t)tempSize;
+            td->td_stripbytecount_p[strip] += (uint64_t)tempSize;
+            toCopy -= (uint64_t)tempSize;
         }
         _TIFFfreeExt(tif, temp);
 
         /* Append the data of this call */
-        offsetWrite += cc;
+        offsetWrite += (uint64_t)cc;
         m = offsetWrite;
     }
 
@@ -915,7 +913,7 @@ static int TIFFAppendToStrip(TIFF *tif, uint32_t strip, uint8_t *data,
         return (0);
     }
     tif->tif_curoff = m;
-    td->td_stripbytecount_p[strip] += cc;
+    td->td_stripbytecount_p[strip] += (uint64_t)cc;
 
     if ((int64_t)td->td_stripbytecount_p[strip] != old_byte_count)
         tif->tif_flags |= TIFF_DIRTYSTRIP;

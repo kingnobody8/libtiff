@@ -321,18 +321,18 @@ struct TIFFOpenOptions
      ((((uint32_t)(x) % (uint32_t)(y)) != 0) ? 1 : 0))
 #define TIFFhowmany8_32(x)                                                     \
     (((x)&0x07) ? ((uint32_t)(x) >> 3) + 1 : (uint32_t)(x) >> 3)
-#define TIFFroundup_32(x, y) (TIFFhowmany_32(x, y) * (y))
+#define TIFFroundup_32(x, y) ((uint32_t)(TIFFhowmany_32(x, y) * (uint32_t)(y)))
 #define TIFFhowmany_64(x, y)                                                   \
     ((((uint64_t)(x)) + (((uint64_t)(y)) - 1)) / ((uint64_t)(y)))
 #define TIFFhowmany8_64(x)                                                     \
     (((x)&0x07) ? ((uint64_t)(x) >> 3) + 1 : (uint64_t)(x) >> 3)
-#define TIFFroundup_64(x, y) (TIFFhowmany_64(x, y) * (y))
+#define TIFFroundup_64(x, y) ((uint64_t)(TIFFhowmany_64(x, y) * (uint64_t)(y)))
 
 /* Safe multiply which returns zero if there is an *unsigned* integer overflow.
  * This macro is not safe for *signed* integer types */
 #define TIFFSafeMultiply(t, v, m)                                              \
-    ((((t)(m) != (t)0) && (((t)(((v) * (m)) / (m))) == (t)(v)))                \
-         ? (t)((v) * (m))                                                      \
+    ((((t)(m) != (t)0) && (((t)((((t)(v)) * ((t)(m))) / ((t)(m)))) == (t)(v))) \
+         ? (t)(((t)(v)) * ((t)(m)))                                            \
          : (t)0)
 
 #define TIFFmax(A, B) ((A) > (B) ? (A) : (B))

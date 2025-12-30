@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
         if (strcmp(argv[arg_index], "-d") == 0 && arg_index < argc - 2)
         {
             arg_index++;
-            if (TIFFSetDirectory(tiff, atoi(argv[arg_index])) != 1)
+            if (TIFFSetDirectory(tiff, (tdir_t)atoi(argv[arg_index])) != 1)
             {
                 fprintf(stderr, "Failed to set directory=%s\n",
                         argv[arg_index]);
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
         if (strcmp(argv[arg_index], "-sd") == 0 && arg_index < argc - 2)
         {
             arg_index++;
-            if (TIFFSetSubDirectory(tiff, atoi(argv[arg_index])) != 1)
+            if (TIFFSetSubDirectory(tiff, (uint64_t)atoi(argv[arg_index])) != 1)
             {
                 fprintf(stderr, "Failed to set sub directory=%s\n",
                         argv[arg_index]);
@@ -256,7 +256,6 @@ int main(int argc, char *argv[])
                         case TIFF_ASCII:
                         case TIFF_SBYTE:
                         case TIFF_UNDEFINED:
-                        default:
                             size = 1;
                             break;
 
@@ -279,6 +278,10 @@ int main(int argc, char *argv[])
                         case TIFF_IFD8:
                         case TIFF_DOUBLE:
                             size = 8;
+                            break;
+                        case TIFF_NOTYPE:
+                        default:
+                            size = 1;
                             break;
                     }
 
@@ -314,17 +317,17 @@ int main(int argc, char *argv[])
                         case TIFF_LONG:
                             for (i = 0; i < wc; i++)
                                 ((uint32_t *)array)[i] =
-                                    atol(argv[arg_index + i]);
+                                    (uint32_t)atol(argv[arg_index + i]);
                             break;
                         case TIFF_SLONG:
                         case TIFF_IFD:
                             for (i = 0; i < wc; i++)
                                 ((int32_t *)array)[i] =
-                                    atol(argv[arg_index + i]);
+                                    (int32_t)atol(argv[arg_index + i]);
                             break;
                         case TIFF_LONG8:
                             for (i = 0; i < wc; i++)
-                                ((uint64_t *)array)[i] = strtoll(
+                                ((uint64_t *)array)[i] = (uint64_t)strtoll(
                                     argv[arg_index + i], (char **)NULL, 10);
                             break;
                         case TIFF_SLONG8:
@@ -345,6 +348,9 @@ int main(int argc, char *argv[])
                                 ((float *)array)[i] =
                                     (float)atof(argv[arg_index + i]);
                             break;
+                        case TIFF_NOTYPE:
+                        case TIFF_ASCII:
+                        case TIFF_UNDEFINED:
                         default:
                             break;
                     }
@@ -410,8 +416,11 @@ int main(int argc, char *argv[])
                         case TIFF_SRATIONAL:
                         case TIFF_FLOAT:
                             ret = TIFFSetField(tiff, TIFFFieldTag(fip),
-                                               (float)atof(argv[arg_index++]));
+                                               atof(argv[arg_index++]));
                             break;
+                        case TIFF_NOTYPE:
+                        case TIFF_ASCII:
+                        case TIFF_UNDEFINED:
                         default:
                             break;
                     }

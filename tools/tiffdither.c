@@ -49,6 +49,9 @@
 #define CopyField(tag, v)                                                      \
     if (TIFFGetField(in, tag, &v))                                             \
     TIFFSetField(out, tag, v)
+#define CopyFieldFloat(tag, v)                                                 \
+    if (TIFFGetField(in, tag, &v))                                             \
+    TIFFSetField(out, tag, (double)(v))
 
 uint32_t imagewidth;
 uint32_t imagelength;
@@ -131,7 +134,7 @@ static int fsdither(TIFF *in, TIFF *out)
                 v = 255;
             if (v > threshold)
             {
-                *outptr |= bit;
+                *outptr |= (unsigned char)bit;
                 v -= 255;
             }
             bit >>= 1;
@@ -141,14 +144,15 @@ static int fsdither(TIFF *in, TIFF *out)
                 bit = 0x80;
             }
             if (!lastpixel)
-                thisptr[0] += (short)(v * 7 / 16);
+                thisptr[0] = (short)(thisptr[0] + (short)(v * 7 / 16));
             if (!lastline)
             {
                 if (j != 0)
-                    nextptr[-1] += (short)(v * 3 / 16);
-                *nextptr++ += (short)(v * 5 / 16);
+                    nextptr[-1] = (short)(nextptr[-1] + (short)(v * 3 / 16));
+                *nextptr = (short)(*nextptr + (short)(v * 5 / 16));
+                nextptr++;
                 if (!lastpixel)
-                    nextptr[0] += (short)(v / 16);
+                    nextptr[0] = (short)(nextptr[0] + (short)(v / 16));
             }
         }
         if (TIFFWriteScanline(out, outline, i, 0) < 0)
@@ -178,7 +182,7 @@ static void processG3Options(char *cp)
         {
             cp++;
             if (strneq(cp, "1d", 2))
-                group3options &= ~GROUP3OPT_2DENCODING;
+                group3options &= ~(uint32_t)GROUP3OPT_2DENCODING;
             else if (strneq(cp, "2d", 2))
                 group3options |= GROUP3OPT_2DENCODING;
             else if (strneq(cp, "fill", 4))
@@ -251,7 +255,7 @@ int main(int argc, char *argv[])
                     usage(EXIT_FAILURE);
                 break;
             case 'r': /* rows/strip */
-                rowsperstrip = atoi(optarg);
+                rowsperstrip = (uint32_t)atoi(optarg);
                 break;
             case 't':
                 threshold = atoi(optarg);
@@ -267,6 +271,8 @@ int main(int argc, char *argv[])
             case '?':
                 usage(EXIT_FAILURE);
                 /*NOTREACHED*/
+                break;
+            default:
                 break;
         }
     if (argc - optind < 2)
@@ -313,8 +319,8 @@ int main(int argc, char *argv[])
         TIFFSetField(out, TIFFTAG_IMAGEDESCRIPTION, thing);
         CopyField(TIFFTAG_PHOTOMETRIC, shortv);
         CopyField(TIFFTAG_ORIENTATION, shortv);
-        CopyField(TIFFTAG_XRESOLUTION, floatv);
-        CopyField(TIFFTAG_YRESOLUTION, floatv);
+        CopyFieldFloat(TIFFTAG_XRESOLUTION, floatv);
+        CopyFieldFloat(TIFFTAG_YRESOLUTION, floatv);
         CopyField(TIFFTAG_RESOLUTIONUNIT, shortv);
         rowsperstrip = TIFFDefaultStripSize(out, rowsperstrip);
         TIFFSetField(out, TIFFTAG_ROWSPERSTRIP, rowsperstrip);
@@ -328,6 +334,8 @@ int main(int argc, char *argv[])
             case COMPRESSION_DEFLATE:
                 if (predictor)
                     TIFFSetField(out, TIFFTAG_PREDICTOR, predictor);
+                break;
+            default:
                 break;
         }
         fsdither(in, out);

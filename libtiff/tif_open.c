@@ -331,7 +331,7 @@ TIFF *TIFFClientOpenExt(const char *name, const char *mode,
         n.a8[0] = 1;
         n.a8[1] = 0;
         (void)n;
-#ifdef WORDS_BIGENDIAN
+#if WORDS_BIGENDIAN
         assert(n.a16 == 256);
 #else
         assert(n.a16 == 1);
@@ -481,13 +481,13 @@ TIFF *TIFFClientOpenExt(const char *name, const char *mode,
         switch (*cp)
         {
             case 'b':
-#ifndef WORDS_BIGENDIAN
+#if !WORDS_BIGENDIAN
                 if (m & O_CREAT)
                     tif->tif_flags |= TIFF_SWAB;
 #endif
                 break;
             case 'l':
-#ifdef WORDS_BIGENDIAN
+#if WORDS_BIGENDIAN
                 if ((m & O_CREAT))
                     tif->tif_flags |= TIFF_SWAB;
 #endif
@@ -539,6 +539,8 @@ TIFF *TIFFClientOpenExt(const char *name, const char *mode,
                     tif->tif_flags |=
                         (TIFF_LAZYSTRILELOAD_ASKED | TIFF_DEFERSTRILELOAD);
                 break;
+            default:
+                break;
         }
 
 #ifdef DEFER_STRILE_LOAD
@@ -562,7 +564,7 @@ TIFF *TIFFClientOpenExt(const char *name, const char *mode,
         /*
          * Setup header and write.
          */
-#ifdef WORDS_BIGENDIAN
+#if WORDS_BIGENDIAN
         tif->tif_header.common.tiff_magic =
             (tif->tif_flags & TIFF_SWAB) ? TIFF_LITTLEENDIAN : TIFF_BIGENDIAN;
 #else
@@ -655,13 +657,13 @@ TIFF *TIFFClientOpenExt(const char *name, const char *mode,
     }
     if (tif->tif_header.common.tiff_magic == TIFF_BIGENDIAN)
     {
-#ifndef WORDS_BIGENDIAN
+#if !WORDS_BIGENDIAN
         tif->tif_flags |= TIFF_SWAB;
 #endif
     }
     else
     {
-#ifdef WORDS_BIGENDIAN
+#if WORDS_BIGENDIAN
         tif->tif_flags |= TIFF_SWAB;
 #endif
     }
@@ -781,6 +783,8 @@ TIFF *TIFFClientOpenExt(const char *name, const char *mode,
             if (!TIFFDefaultDirectory(tif))
                 goto bad;
             return (tif);
+        default:
+            break;
     }
 bad:
     tif->tif_mode = O_RDONLY; /* XXX avoid flush */

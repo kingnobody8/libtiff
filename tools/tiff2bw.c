@@ -69,7 +69,7 @@ static void compresscontig(unsigned char *out, unsigned char *rgb, uint32_t n)
 static void compresssep(unsigned char *out, unsigned char *r, unsigned char *g,
                         unsigned char *b, uint32_t n)
 {
-    uint32_t red = RED, green = GREEN, blue = BLUE;
+    uint32_t red = (uint32_t)RED, green = (uint32_t)GREEN, blue = (uint32_t)BLUE;
 
     while (n-- > 0)
         *out++ =
@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
                     usage(EXIT_FAILURE);
                 break;
             case 'r': /* rows/strip */
-                rowsperstrip = atoi(optarg);
+                rowsperstrip = (uint32_t)atoi(optarg);
                 break;
             case 'R':
                 RED = PCT(atoi(optarg));
@@ -162,6 +162,8 @@ int main(int argc, char *argv[])
             case '?':
                 usage(EXIT_FAILURE);
                 /*NOTREACHED*/
+                break;
+            default:
                 break;
         }
     if (argc - optind < 2)
@@ -229,6 +231,8 @@ int main(int argc, char *argv[])
                 if (predictor != 0)
                     TIFFSetField(out, TIFFTAG_PREDICTOR, predictor);
                 break;
+            default:
+                break;
         }
     }
     TIFFSetField(out, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISBLACK);
@@ -257,7 +261,7 @@ int main(int argc, char *argv[])
             if (checkcmap(in, 1 << bitspersample, red, green, blue) == 16)
             {
                 int i;
-#define CVT(x) (((x)*255L) / ((1L << 16) - 1))
+#define CVT(x) ((uint16_t)((((x)*255L) / ((1L << 16) - 1))))
                 for (i = (1 << bitspersample) - 1; i >= 0; i--)
                 {
                     red[i] = CVT(red[i]);
@@ -320,6 +324,8 @@ int main(int argc, char *argv[])
             }
             break;
         }
+        default:
+            break;
     }
 #undef pack
     if (inbuf)
@@ -387,12 +393,12 @@ static int processCompressOptions(char *opt)
 #define CopyField(tag, v)                                                      \
     if (TIFFGetField(in, tag, &v))                                             \
     TIFFSetField(out, tag, v)
+#define CopyFieldFloat(tag, v)                                                 \
+    if (TIFFGetField(in, tag, &v))                                             \
+    TIFFSetField(out, tag, (double)(v))
 #define CopyField2(tag, v1, v2)                                                \
     if (TIFFGetField(in, tag, &v1, &v2))                                       \
     TIFFSetField(out, tag, v1, v2)
-#define CopyField3(tag, v1, v2, v3)                                            \
-    if (TIFFGetField(in, tag, &v1, &v2, &v3))                                  \
-    TIFFSetField(out, tag, v1, v2, v3)
 #define CopyField4(tag, v1, v2, v3, v4)                                        \
     if (TIFFGetField(in, tag, &v1, &v2, &v3, &v4))                             \
     TIFFSetField(out, tag, v1, v2, v3, v4)
@@ -435,7 +441,7 @@ static void cpTag(TIFF *in, TIFF *out, uint16_t tag, uint16_t count,
             if (count == 1)
             {
                 float floatv;
-                CopyField(tag, floatv);
+                CopyFieldFloat(tag, floatv);
             }
             else if (count == (uint16_t)-1)
             {
@@ -461,6 +467,18 @@ static void cpTag(TIFF *in, TIFF *out, uint16_t tag, uint16_t count,
                 CopyField(tag, doubleav);
             }
             break;
+        case TIFF_NOTYPE:
+        case TIFF_BYTE:
+        case TIFF_SBYTE:
+        case TIFF_UNDEFINED:
+        case TIFF_SSHORT:
+        case TIFF_SLONG:
+        case TIFF_SRATIONAL:
+        case TIFF_FLOAT:
+        case TIFF_IFD:
+        case TIFF_LONG8:
+        case TIFF_SLONG8:
+        case TIFF_IFD8:
         default:
             TIFFError(TIFFFileName(in),
                       "Data type %u is not supported, tag %u skipped.",

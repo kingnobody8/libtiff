@@ -28,7 +28,6 @@
 #endif
 
 #ifndef TIFFmin
-#define TIFFmax(A, B) ((A) > (B) ? (A) : (B))
 #define TIFFmin(A, B) ((A) < (B) ? (A) : (B))
 #endif
 
@@ -36,13 +35,14 @@
 #define SPP 3 /* samples per pixel */
 #define BPS 8 /* bits per sample */
 
-char *modeStrings[] = {"wl", "wb", "w8l", "w8b"};
+const char *modeStrings[] = {"wl", "wb", "w8l", "w8b"};
 
 /* Writes some pixel data as scanline or tiles to file.
  */
-int write_image_data(TIFF *tif, uint16_t width, uint16_t length, bool tiled,
-                     unsigned int pixval, unsigned char *plastlinedata,
-                     unsigned int lastlinebytesmax)
+static int write_image_data(TIFF *tif, uint16_t width, uint16_t length,
+                            bool tiled, unsigned int pixval,
+                            unsigned char *plastlinedata,
+                            unsigned int lastlinebytesmax)
 {
     size_t bufLen;
     unsigned char *pbufLine = NULL;
@@ -74,17 +74,17 @@ int write_image_data(TIFF *tif, uint16_t width, uint16_t length, bool tiled,
         bufLen = (((size_t)width * SPP * BPS) + 7) / 8;
     }
 
-    pbufLine = (unsigned char *)_TIFFmalloc(bufLen);
+    pbufLine = (unsigned char *)_TIFFmalloc((tmsize_t)bufLen);
     if (pbufLine == NULL)
         return 1;
 
     /* Fill image buffer. */
     pbufLine[0] = (unsigned char)((pixval * 100) % bpsmod);
-    pbufLine[1] = 127 % bpsmod;
-    pbufLine[2] = 255 % bpsmod;
+    pbufLine[1] = (unsigned char)(127 % bpsmod);
+    pbufLine[2] = (unsigned char)(255 % bpsmod);
     for (size_t x = SPP; x < bufLen; x += SPP)
     {
-        pbufLine[x] = 10 % bpsmod;
+        pbufLine[x] = (unsigned char)(10 % bpsmod);
         pbufLine[x + 1] = (unsigned char)((x * 40) % bpsmod);
         pbufLine[x + 2] = (unsigned char)((x * 70) % bpsmod);
     }
@@ -107,14 +107,14 @@ int write_image_data(TIFF *tif, uint16_t width, uint16_t length, bool tiled,
                        TIFFmin(bufLen, (size_t)lastlinebytesmax));
             }
             /* Change something for next row. */
-            pbufLine[0] = (pbufLine[0] + 35) % bpsmod;
+            pbufLine[0] = (unsigned char)(((unsigned int)(pbufLine[0] + 35)) % bpsmod);
         }
     }
     else
     {
         for (int i = 0; i < length; i++)
         {
-            if (TIFFWriteScanline(tif, pbufLine, i, 0) == -1)
+            if (TIFFWriteScanline(tif, pbufLine, (uint32_t)i, 0) == -1)
             {
                 fprintf(stderr,
                         "Can't write image data scanline. Testline %d\n",
@@ -127,7 +127,7 @@ int write_image_data(TIFF *tif, uint16_t width, uint16_t length, bool tiled,
                        TIFFmin(bufLen, (size_t)lastlinebytesmax));
             }
             /* Change something for next row. */
-            pbufLine[0] = (pbufLine[0] + 30) % bpsmod;
+            pbufLine[0] = (unsigned char)(((unsigned int)(pbufLine[0] + 30)) % bpsmod);
         }
     }
     _TIFFfree(pbufLine);
@@ -137,11 +137,11 @@ int write_image_data(TIFF *tif, uint16_t width, uint16_t length, bool tiled,
 /* Fills the active IFD with some default values and writes
  *  an image with given number of lines as strips (scanlines) or tiles to file.
  */
-int write_data_to_current_directory(TIFF *tif, uint16_t width, uint16_t length,
-                                    bool tiled, int ifd_page_num,
-                                    bool write_data,
-                                    unsigned char *plastlinedata,
-                                    unsigned int lastlinebytesmax)
+static int write_data_to_current_directory(TIFF *tif, uint16_t width,
+                                           uint16_t length, bool tiled,
+                                           int ifd_page_num, bool write_data,
+                                           unsigned char *plastlinedata,
+                                           unsigned int lastlinebytesmax)
 {
     const uint16_t photometric = PHOTOMETRIC_RGB;
     const uint16_t rows_per_strip = 1;
@@ -216,7 +216,7 @@ int write_data_to_current_directory(TIFF *tif, uint16_t width, uint16_t length,
     /* Write dummy pixel data. */
     if (write_data)
     {
-        if (write_image_data(tif, width, length, tiled, ifd_page_num,
+        if (write_image_data(tif, width, length, tiled, (unsigned int)ifd_page_num,
                              plastlinedata, lastlinebytesmax))
         {
             fprintf(stderr, "Can't write image data. Testline %d\n", __LINE__);
@@ -228,8 +228,8 @@ int write_data_to_current_directory(TIFF *tif, uint16_t width, uint16_t length,
 
 /* Adds an EXIF IFD with some default values to the active IFD.
  */
-int write_EXIF_data_to_current_directory(TIFF *tif, int i,
-                                         uint64_t *dir_offset_EXIF)
+static int write_EXIF_data_to_current_directory(TIFF *tif, int i,
+                                                uint64_t *dir_offset_EXIF)
 {
     char auxString[128];
 
@@ -272,8 +272,8 @@ int write_EXIF_data_to_current_directory(TIFF *tif, int i,
 
 /* Compare 'requested_dir_number' with number written in PageName tag
  * into the IFD to identify that IFD.  */
-int is_requested_directory(TIFF *tif, int requested_dir_number,
-                           const char *filename)
+static int is_requested_directory(TIFF *tif, int requested_dir_number,
+                                  const char *filename)
 {
     char *ptr = NULL;
     char *auxStr = NULL;
@@ -315,9 +315,9 @@ int is_requested_directory(TIFF *tif, int requested_dir_number,
 /* Checks that IFDs on file can be overwritten if they have not grown and
  * were re-written to an other location if IFD size has been grown.
  */
-int test_IFD_enlargement(const char *filename, unsigned int openMode,
-                         bool is_strile_array_writing, int numIFDs,
-                         uint16_t width, uint16_t length, bool tiled)
+static int test_IFD_enlargement(const char *filename, unsigned int openMode,
+                                bool is_strile_array_writing, int numIFDs,
+                                uint16_t width, uint16_t length, bool tiled)
 {
 
 #define NUMIFDsMAX 4
@@ -405,7 +405,7 @@ int test_IFD_enlargement(const char *filename, unsigned int openMode,
      * written when is_strile_array_writing is true. */
     for (int i = numIFDs - 1; i >= 0; i--)
     {
-        TIFFSetDirectory(tif, i);
+        TIFFSetDirectory(tif, (tdir_t)i);
         offsetBase[i] = TIFFCurrentDirOffset(tif);
     }
     /* For TIFFDeferStrileArrayWriting write now image data to file.*/
@@ -418,7 +418,7 @@ int test_IFD_enlargement(const char *filename, unsigned int openMode,
              * First TIFFForceStrileArrayWriting() prepares internal flags and
              * memory for next writing after switching back to the already
              * written IFD. */
-            TIFFSetDirectory(tif, i);
+            TIFFSetDirectory(tif, (tdir_t)i);
             if (!TIFFForceStrileArrayWriting(tif))
             {
                 fprintf(
@@ -428,7 +428,7 @@ int test_IFD_enlargement(const char *filename, unsigned int openMode,
                 goto failure;
             }
             /* Then write image pixels. */
-            if (write_image_data(tif, width, length, tiled, 5 * i,
+            if (write_image_data(tif, width, length, tiled, (unsigned int)(5 * i),
                                  &bufLine[i][0], sizeof(bufLine[i])))
             {
                 fprintf(stderr, "Can't write image data. Testline %d\n",
@@ -457,7 +457,7 @@ int test_IFD_enlargement(const char *filename, unsigned int openMode,
     /* Retrieve IFD offset values for later checking. Should not be changed. */
     for (int i = numIFDs - 1; i >= 0; i--)
     {
-        TIFFSetDirectory(tif, i);
+        TIFFSetDirectory(tif, (tdir_t)i);
         auxUint64 = TIFFCurrentDirOffset(tif);
         if (offsetBase[i] != auxUint64)
         {
@@ -791,7 +791,7 @@ int test_IFD_enlargement(const char *filename, unsigned int openMode,
     for (int i = 0; i < numIFDs; i++)
     {
 
-        if (!TIFFSetDirectory(tif, i))
+        if (!TIFFSetDirectory(tif, (tdir_t)i))
         {
             fprintf(stderr, "Can't set directory %d of %s. Testline %d\n", i,
                     filename, __LINE__);
@@ -844,7 +844,7 @@ int test_IFD_enlargement(const char *filename, unsigned int openMode,
                 goto failure;
             }
             bytesRead =
-                TIFFReadScanline(tif, &bufLine[NUMIFDsMAX][0], length - 1, 0);
+                TIFFReadScanline(tif, &bufLine[NUMIFDsMAX][0], (uint32_t)(length - 1), 0);
         }
         if (bytesRead > 0)
         {
@@ -890,7 +890,7 @@ failure:
  * not grown and were re-written to an other location if IFD size has been
  * grown.
  */
-int test_EXIF_enlargement(const char *filename, bool is_big_tiff)
+static int test_EXIF_enlargement(const char *filename, bool is_big_tiff)
 {
     char auxString[128];
     uint64_t offsetEXIFBase[2];
@@ -940,7 +940,7 @@ int test_EXIF_enlargement(const char *filename, bool is_big_tiff)
             goto failure;
         }
         /* Go back to current main-IFD and update EXIF-IFD offset. */
-        if (!TIFFSetDirectory(tif, i))
+        if (!TIFFSetDirectory(tif, (tdir_t)i))
         {
             fprintf(stderr, "Can't set directory %d of %s. Testline %d\n", i,
                     filename, __LINE__);
@@ -1180,7 +1180,7 @@ failure:
  * offset was taken for TIFFSetSubDirectory(). This shall result in an error
  * return of TIFFWriteDirectory().
  */
-int test_SubIFD_enlargement(const char *filename, bool is_big_tiff)
+static int test_SubIFD_enlargement(const char *filename, bool is_big_tiff)
 {
 
     /* Define the number of sub-IFDs you are going to write */
@@ -1404,7 +1404,7 @@ failure:
  * IFD in a file overwrite it if it has not grown, and write it to another
  * location if the IFD size has grown.
  */
-int test_CheckpointDirectory(const char *filename, bool is_big_tiff)
+static int test_CheckpointDirectory(const char *filename, bool is_big_tiff)
 {
 
     uint64_t auxUint64;
@@ -1463,7 +1463,7 @@ int test_CheckpointDirectory(const char *filename, bool is_big_tiff)
         /* Check IFD offsets:
          * First IFD shall be overwritten (same offset) and second IFD shall be
          * re-written (different offset). */
-        if (!TIFFSetDirectory(tif, i))
+        if (!TIFFSetDirectory(tif, (tdir_t)i))
         {
             fprintf(stderr, "Can't set directory %d of %s. Testline %d\n", i,
                     filename, __LINE__);
@@ -1609,7 +1609,7 @@ failure:
  * byte gaps in the data space for data outside IFD entries. This routine
  * checks correct handling for that.
  */
-int test_OddDataSizes(const char *filename, unsigned int openMode)
+static int test_OddDataSizes(const char *filename, unsigned int openMode)
 {
 
     uint64_t auxUint64;

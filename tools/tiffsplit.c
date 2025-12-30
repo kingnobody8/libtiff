@@ -41,6 +41,9 @@
 #define CopyField(tag, v)                                                      \
     if (TIFFGetField(in, tag, &v))                                             \
     TIFFSetField(out, tag, v)
+#define CopyFieldFloat(tag, v)                                                 \
+    if (TIFFGetField(in, tag, &v))                                             \
+    TIFFSetField(out, tag, (double)(v))
 #define CopyField2(tag, v1, v2)                                                \
     if (TIFFGetField(in, tag, &v1, &v2))                                       \
     TIFFSetField(out, tag, v1, v2)
@@ -165,7 +168,7 @@ int main(int argc, char *argv[])
         newfilename();
 
         path_len = strlen(fname) + sizeof(TIFF_SUFFIX);
-        path = (char *)limitMalloc(path_len);
+        path = (char *)limitMalloc((tmsize_t)path_len);
         if (!path)
         {
             fprintf(stderr,
@@ -269,11 +272,11 @@ static void newfilename(void)
      * start from 0 every 676 times (provided by lastTurn)
      * this keeps us within a-z boundaries
      */
-    fpnt[1] = (char)((fnum - lastTurn) / 26) + 'a';
+    fpnt[1] = (char)(((fnum - lastTurn) / 26) + 'a');
     /*
      * cycle last letter every file, from a-z, then repeat
      */
-    fpnt[2] = (char)(fnum % 26) + 'a';
+    fpnt[2] = (char)((fnum % 26) + 'a');
     fnum++;
 }
 
@@ -310,15 +313,15 @@ static int tiffcp(TIFF *in, TIFF *out)
     CopyField(TIFFTAG_ORIENTATION, shortv);
     CopyField(TIFFTAG_MINSAMPLEVALUE, shortv);
     CopyField(TIFFTAG_MAXSAMPLEVALUE, shortv);
-    CopyField(TIFFTAG_XRESOLUTION, floatv);
-    CopyField(TIFFTAG_YRESOLUTION, floatv);
+    CopyFieldFloat(TIFFTAG_XRESOLUTION, floatv);
+    CopyFieldFloat(TIFFTAG_YRESOLUTION, floatv);
     CopyField(TIFFTAG_GROUP3OPTIONS, longv);
     CopyField(TIFFTAG_GROUP4OPTIONS, longv);
     CopyField(TIFFTAG_RESOLUTIONUNIT, shortv);
     CopyField(TIFFTAG_PLANARCONFIG, shortv);
     CopyField(TIFFTAG_ROWSPERSTRIP, longv);
-    CopyField(TIFFTAG_XPOSITION, floatv);
-    CopyField(TIFFTAG_YPOSITION, floatv);
+    CopyFieldFloat(TIFFTAG_XPOSITION, floatv);
+    CopyFieldFloat(TIFFTAG_YPOSITION, floatv);
     CopyField(TIFFTAG_IMAGEDEPTH, longv);
     CopyField(TIFFTAG_TILEDEPTH, longv);
     CopyField(TIFFTAG_SAMPLEFORMAT, shortv);

@@ -72,7 +72,7 @@ typedef size_t WordType;
 #define CODE_EOI 257   /* end-of-information code */
 #define CODE_FIRST 258 /* first free code entry */
 #define CODE_MAX MAXCODE(BITS_MAX)
-#define HSIZE 9001L /* 91% occupancy */
+#define HSIZE 9001 /* 91% occupancy */
 #define HSHIFT (13 - 8)
 #ifdef LZW_COMPAT
 /* NB: +1024 is for compatibility with old files */
@@ -325,7 +325,7 @@ static int LZWPreDecode(TIFF *tif, uint16_t s)
  */
 
 /* Get the next 32 or 64-bit from the input data */
-#ifdef WORDS_BIGENDIAN
+#if WORDS_BIGENDIAN
 #define GetNextData(nextdata, bp) memcpy(&nextdata, bp, sizeof(nextdata))
 #elif SIZEOF_WORDTYPE == 8
 #if defined(_M_X64)
@@ -372,7 +372,7 @@ static int LZWPreDecode(TIFF *tif, uint16_t s)
                 nextbits += 8 * SIZEOF_WORDTYPE;                               \
                 dec_bitsleft -= 8 * SIZEOF_WORDTYPE;                           \
                 code = (WordType)((codetmp | (nextdata >> nextbits)) &         \
-                                  nbitsmask);                                  \
+                                  (WordType)nbitsmask);                                  \
                 break;                                                         \
             }                                                                  \
             else                                                               \
@@ -396,7 +396,7 @@ static int LZWPreDecode(TIFF *tif, uint16_t s)
                 }                                                              \
             }                                                                  \
         }                                                                      \
-        code = (WordType)((nextdata >> nextbits) & nbitsmask);                 \
+        code = (WordType)((nextdata >> nextbits) & (WordType)nbitsmask);                 \
     } while (0)
 
 static int LZWDecode(TIFF *tif, uint8_t *op0, tmsize_t occ0, uint16_t s)
@@ -472,7 +472,7 @@ static int LZWDecode(TIFF *tif, uint8_t *op0, tmsize_t occ0, uint16_t s)
     }
 
     bp = (uint8_t *)tif->tif_rawcp;
-    sp->dec_bitsleft += (((uint64_t)tif->tif_rawcc - sp->old_tif_rawcc) << 3);
+    sp->dec_bitsleft += (((uint64_t)tif->tif_rawcc - (uint64_t)sp->old_tif_rawcc) << 3);
     uint64_t dec_bitsleft = sp->dec_bitsleft;
     nbits = sp->lzw_nbits;
     nextdata = sp->lzw_nextdata;
@@ -493,7 +493,7 @@ begin:
 {
     WordType code;
     GetNextCodeLZW();
-    codep = dec_codetab + code;
+    codep = dec_codetab + (unsigned long)code;
     if (code >= CODE_FIRST)
         goto code_above_or_equal_to_258;
     if (code < 256)
@@ -508,7 +508,7 @@ code_below_256:
         goto error_code;
     free_entp->next = oldcodep;
     free_entp->firstchar = oldcodep->firstchar;
-    free_entp->length = oldcodep->length + 1;
+    free_entp->length = (uint16_t)(oldcodep->length + 1);
     free_entp->value = (uint8_t)code;
     free_entp->repeated =
         (bool)(oldcodep->repeated & (oldcodep->value == code));
@@ -556,7 +556,7 @@ code_above_or_equal_to_258:
     free_entp->next = oldcodep;
 
     free_entp->firstchar = oldcodep->firstchar;
-    free_entp->length = oldcodep->length + 1;
+    free_entp->length = (uint16_t)(oldcodep->length + 1);
     if (++free_entp > maxcodep)
     {
         if (++nbits > BITS_MAX) /* should not happen for a conformant encoder */
@@ -673,7 +673,7 @@ code_clear:
     free_entp = dec_codetab + CODE_FIRST;
     nbits = BITS_MIN;
     nbitsmask = MAXCODE(BITS_MIN);
-    maxcodep = dec_codetab + nbitsmask - 1;
+    maxcodep = dec_codetab + (unsigned long)nbitsmask - 1;
     do
     {
         GetNextCodeLZW();
@@ -774,7 +774,7 @@ error_code:
         else                                                                   \
         {                                                                      \
             _get(_sp, _bp, _code);                                             \
-            dec_bitsleft -= nbits;                                             \
+            dec_bitsleft -= (uint64_t)nbits;                                   \
         }                                                                      \
     }
 
@@ -790,7 +790,7 @@ error_code:
             nextdata |= (unsigned long)*(bp)++ << nextbits;                    \
             nextbits += 8;                                                     \
         }                                                                      \
-        code = (hcode_t)(nextdata & nbitsmask);                                \
+        code = (hcode_t)(nextdata & (unsigned long)nbitsmask);                                \
         nextdata >>= nbits;                                                    \
         nextbits -= nbits;                                                     \
     }
@@ -858,7 +858,7 @@ static int LZWDecodeCompat(TIFF *tif, uint8_t *op0, tmsize_t occ0, uint16_t s)
 
     bp = (uint8_t *)tif->tif_rawcp;
 
-    sp->dec_bitsleft += (((uint64_t)tif->tif_rawcc - sp->old_tif_rawcc) << 3);
+    sp->dec_bitsleft += (((uint64_t)tif->tif_rawcc - (uint64_t)sp->old_tif_rawcc) << 3);
     uint64_t dec_bitsleft = sp->dec_bitsleft;
 
     nbits = sp->lzw_nbits;
@@ -872,18 +872,18 @@ static int LZWDecodeCompat(TIFF *tif, uint8_t *op0, tmsize_t occ0, uint16_t s)
     while (occ > 0)
     {
         NextCode(tif, sp, bp, code, GetNextCodeCompat, dec_bitsleft);
-        if (code == CODE_EOI)
+        if ((int)code == CODE_EOI)
             break;
-        if (code == CODE_CLEAR)
+        if ((uint64_t)code == CODE_CLEAR)
         {
             do
             {
-                free_entp = sp->dec_codetab + CODE_FIRST;
+                free_entp = sp->dec_codetab + (unsigned long)CODE_FIRST;
                 _TIFFmemset(free_entp, 0,
                             (CSIZE - CODE_FIRST) * sizeof(code_t));
                 nbits = BITS_MIN;
                 nbitsmask = MAXCODE(BITS_MIN);
-                maxcodep = sp->dec_codetab + nbitsmask;
+                maxcodep = sp->dec_codetab + (unsigned long)nbitsmask;
                 NextCode(tif, sp, bp, code, GetNextCodeCompat, dec_bitsleft);
             } while (code == CODE_CLEAR); /* consecutive CODE_CLEAR codes */
             if (code == CODE_EOI)
@@ -925,7 +925,7 @@ static int LZWDecodeCompat(TIFF *tif, uint8_t *op0, tmsize_t occ0, uint16_t s)
             return (0);
         }
         free_entp->firstchar = free_entp->next->firstchar;
-        free_entp->length = free_entp->next->length + 1;
+        free_entp->length = (uint16_t)(free_entp->next->length + 1);
         free_entp->value =
             (codep < free_entp) ? codep->firstchar : free_entp->firstchar;
         if (++free_entp > maxcodep)
@@ -1196,7 +1196,7 @@ static int LZWEncode(TIFF *tif, uint8_t *bp, tmsize_t cc, uint16_t s)
                  * Avoid pointer arithmetic because of
                  * wraparound problems with segments.
                  */
-                if ((h -= disp) < 0)
+                if ((h -= (int)disp) < 0)
                     h += HSIZE;
                 hp = &sp->enc_hashtab[h];
                 if (hp->hash == fcode)
@@ -1319,7 +1319,7 @@ static int LZWPostEncode(TIFF *tif)
     {
         int free_ent = sp->lzw_free_ent;
 
-        PutNextCode(op, sp->enc_oldcode);
+        PutNextCode(op, (WordType)sp->enc_oldcode);
         sp->enc_oldcode = (hcode_t)-1;
         free_ent++;
 

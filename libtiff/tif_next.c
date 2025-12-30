@@ -38,21 +38,22 @@
                 op[0] = (unsigned char)((v) << 6);                             \
                 break;                                                         \
             case 1:                                                            \
-                op[0] |= (v) << 4;                                             \
+                op[0] |= (unsigned char)((v) << 4);                            \
                 break;                                                         \
             case 2:                                                            \
-                op[0] |= (v) << 2;                                             \
+                op[0] |= (unsigned char)((v) << 2);                            \
                 break;                                                         \
             case 3:                                                            \
-                *op++ |= (v);                                                  \
+                *op++ |= (unsigned char)(v);                                   \
                 op_offset++;                                                   \
+                break;                                                         \
+            default:                                                           \
                 break;                                                         \
         }                                                                      \
     }
 
 #define LITERALROW 0x00
 #define LITERALSPAN 0x40
-#define WHITE ((1 << 2) - 1)
 
 static int NeXTDecode(TIFF *tif, uint8_t *buf, tmsize_t occ, uint16_t s)
 {

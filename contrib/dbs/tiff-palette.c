@@ -83,9 +83,9 @@ int main(int argc, char **argv)
     {
         cmsize = 2;
     }
-    red = (uint16_t *)malloc(cmsize * sizeof(uint16_t));
-    green = (uint16_t *)malloc(cmsize * sizeof(uint16_t));
-    blue = (uint16_t *)malloc(cmsize * sizeof(uint16_t));
+    red = (uint16_t *)malloc((size_t)cmsize * sizeof(uint16_t));
+    green = (uint16_t *)malloc((size_t)cmsize * sizeof(uint16_t));
+    blue = (uint16_t *)malloc((size_t)cmsize * sizeof(uint16_t));
 
     switch (bits_per_pixel)
     {
@@ -219,6 +219,8 @@ int main(int argc, char **argv)
             green[1] = SCALE(255);
             blue[1] = SCALE(255);
             break;
+        default:
+            break;
     }
 
     if ((tif = TIFFOpen(argv[3], "w")) == NULL)
@@ -241,7 +243,7 @@ int main(int argc, char **argv)
     TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, RESUNIT_NONE);
     TIFFSetField(tif, TIFFTAG_COLORMAP, red, green, blue);
 
-    scan_line = (unsigned char *)malloc(WIDTH / (8 / bits_per_pixel));
+    scan_line = (unsigned char *)malloc((size_t)(WIDTH / (8 / bits_per_pixel)));
 
     for (i = 0; i < HEIGHT; i++)
     {
@@ -269,9 +271,11 @@ int main(int argc, char **argv)
                         ((j / chunk_size) == (i / chunk_size)) ? 0x00 : 0xff;
                     j += 8;
                     break;
+                default:
+                    break;
             }
         }
-        TIFFWriteScanline(tif, scan_line, i, 0);
+        TIFFWriteScanline(tif, scan_line, (uint32_t)i, 0);
     }
 
     free(scan_line);

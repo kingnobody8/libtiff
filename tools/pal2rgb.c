@@ -58,13 +58,6 @@ static int checkcmap(int n, uint16_t *r, uint16_t *g, uint16_t *b)
     return (8);
 }
 
-#define CopyField(tag, v)                                                      \
-    if (TIFFGetField(in, tag, &v))                                             \
-    TIFFSetField(out, tag, v)
-#define CopyField3(tag, v1, v2, v3)                                            \
-    if (TIFFGetField(in, tag, &v1, &v2, &v3))                                  \
-    TIFFSetField(out, tag, v1, v2, v3)
-
 static uint16_t compression = (uint16_t)-1;
 static uint16_t predictor = 0;
 static int quality = 75; /* JPEG quality */
@@ -108,7 +101,7 @@ int main(int argc, char *argv[])
                     usage(EXIT_FAILURE);
                 break;
             case 'r': /* rows/strip */
-                rowsperstrip = atoi(optarg);
+                rowsperstrip = (uint32_t)atoi(optarg);
                 break;
             case 'h':
                 usage(EXIT_SUCCESS);
@@ -116,6 +109,9 @@ int main(int argc, char *argv[])
             case '?':
                 usage(EXIT_FAILURE);
                 /*NOTREACHED*/
+                break;
+            default:
+                break;
         }
     if (argc - optind != 2)
         usage(EXIT_FAILURE);
@@ -174,6 +170,8 @@ int main(int argc, char *argv[])
             if (predictor != 0)
                 TIFFSetField(out, TIFFTAG_PREDICTOR, predictor);
             break;
+        default:
+            break;
     }
     TIFFSetField(out, TIFFTAG_PHOTOMETRIC, photometric);
     TIFFSetField(out, TIFFTAG_SAMPLESPERPIXEL, 3);
@@ -192,7 +190,7 @@ int main(int argc, char *argv[])
 
         for (i = (1 << bitspersample) - 1; i >= 0; i--)
         {
-#define CVT(x) (((x)*255) / ((1L << 16) - 1))
+#define CVT(x) ((uint16_t)((((x)*255) / ((1L << 16) - 1))))
             rmap[i] = CVT(rmap[i]);
             gmap[i] = CVT(gmap[i]);
             bmap[i] = CVT(bmap[i]);
@@ -256,6 +254,8 @@ int main(int argc, char *argv[])
                         goto done;
                 }
                 break;
+            default:
+                break;
         }
         _TIFFfree(ibuf);
         _TIFFfree(obuf);
@@ -311,12 +311,12 @@ static int processCompressOptions(char *opt)
 #define CopyField(tag, v)                                                      \
     if (TIFFGetField(in, tag, &v))                                             \
     TIFFSetField(out, tag, v)
+#define CopyFieldFloat(tag, v)                                                 \
+    if (TIFFGetField(in, tag, &v))                                             \
+    TIFFSetField(out, tag, (double)(v))
 #define CopyField2(tag, v1, v2)                                                \
     if (TIFFGetField(in, tag, &v1, &v2))                                       \
     TIFFSetField(out, tag, v1, v2)
-#define CopyField3(tag, v1, v2, v3)                                            \
-    if (TIFFGetField(in, tag, &v1, &v2, &v3))                                  \
-    TIFFSetField(out, tag, v1, v2, v3)
 #define CopyField4(tag, v1, v2, v3, v4)                                        \
     if (TIFFGetField(in, tag, &v1, &v2, &v3, &v4))                             \
     TIFFSetField(out, tag, v1, v2, v3, v4)
@@ -359,7 +359,7 @@ static void cpTag(TIFF *in, TIFF *out, uint16_t tag, uint16_t count,
             if (count == 1)
             {
                 float floatv;
-                CopyField(tag, floatv);
+                CopyFieldFloat(tag, floatv);
             }
             else if (count == (uint16_t)-1)
             {
@@ -385,6 +385,18 @@ static void cpTag(TIFF *in, TIFF *out, uint16_t tag, uint16_t count,
                 CopyField(tag, doubleav);
             }
             break;
+        case TIFF_NOTYPE:
+        case TIFF_BYTE:
+        case TIFF_SBYTE:
+        case TIFF_UNDEFINED:
+        case TIFF_SSHORT:
+        case TIFF_SLONG:
+        case TIFF_SRATIONAL:
+        case TIFF_FLOAT:
+        case TIFF_IFD:
+        case TIFF_LONG8:
+        case TIFF_SLONG8:
+        case TIFF_IFD8:
         default:
             TIFFError(TIFFFileName(in),
                       "Data type %u is not supported, tag %d skipped.",
