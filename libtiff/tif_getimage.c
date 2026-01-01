@@ -3183,8 +3183,8 @@ static int PickContigCase(TIFFRGBAImage *img)
                         img->height < SubsamplingVer)
                     {
                         TIFFErrorExtR(img->tif, TIFFFileName(img->tif),
-                                      "YCbCr subsampling (%u,%u) incompatible "
-                                      "with image size %ux%u",
+                                      "YCbCr subsampling (%" PRIu16 ",%" PRIu16 ") incompatible "
+                                      "with image size %" PRIu32 "%" PRIu32 "",
                                       SubsamplingHor, SubsamplingVer,
                                       img->width, img->height);
                         return (0);
