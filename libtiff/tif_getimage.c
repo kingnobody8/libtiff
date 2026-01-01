@@ -758,7 +758,7 @@ static int gtTileContig(TIFFRGBAImage *img, uint32_t *raster, uint32_t w,
     {
         TIFFErrorExtR(tif, TIFFFileName(tif),
                       "Error in gtTileContig: column offset %d exceeds "
-                      "image width %" PRIu32 ",
+                      "image width %" PRIu32 "",
                       img->col_offset, img->width);
         return 0;
     }
@@ -931,7 +931,7 @@ static int gtTileSeparate(TIFFRGBAImage *img, uint32_t *raster, uint32_t w,
     {
         TIFFErrorExtR(tif, TIFFFileName(tif),
                       "Error in gtTileSeparate: column offset %d exceeds "
-                      "image width %" PRIu32 ",
+                      "image width %" PRIu32 "",
                       img->col_offset, img->width);
         return 0;
     }
@@ -1162,7 +1162,7 @@ static int gtStripContig(TIFFRGBAImage *img, uint32_t *raster, uint32_t w,
     {
         TIFFErrorExtR(tif, TIFFFileName(tif),
                       "Error in gtStripContig: column offset %d exceeds "
-                      "image width %" PRIu32 ",
+                      "image width %" PRIu32 "",
                       img->col_offset, imagewidth);
         return 0;
     }
@@ -1307,7 +1307,7 @@ static int gtStripSeparate(TIFFRGBAImage *img, uint32_t *raster, uint32_t w,
     {
         TIFFErrorExtR(tif, TIFFFileName(tif),
                       "Error in gtStripSeparate: column offset %d exceeds "
-                      "image width %" PRIu32 ",
+                      "image width %" PRIu32 "",
                       img->col_offset, imagewidth);
         return 0;
     }
